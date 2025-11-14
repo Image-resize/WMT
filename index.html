@@ -12,6 +12,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
     <!-- QR Code Generator Library -->
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator/qrcode.js"></script>
+    <!-- ### নতুন যুক্ত করা হয়েছে: QR Code Scanner Library ### -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.4/html5-qrcode.min.js"></script>
 
     <style>
         * {
@@ -304,6 +306,10 @@
             background: #e8f0fe;
             color: var(--primary);
         }
+        .sidebar-menu a.kyc-verified-link {
+            color: var(--secondary);
+            pointer-events: none; /* Make it unclickable */
+        }
         .sidebar-menu i { font-size: 20px; width: 24px; text-align: center; }
 
         .main-content { padding: 20px 0; }
@@ -483,7 +489,7 @@
             border: 1px solid #f5c6cb;
         }
 
-        /* QR Code Modal Styles */
+        /* Modal Styles */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -503,6 +509,8 @@
             text-align: center;
             position: relative;
             box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            max-width: 90%;
+            width: 400px;
         }
         .modal-close {
             position: absolute;
@@ -518,7 +526,16 @@
             border-radius: 8px;
             padding: 10px;
         }
-
+        
+        /* ### নতুন যুক্ত করা হয়েছে: QR Scanner Modal Style ### */
+        #qr-scanner-modal .modal-content {
+            width: 500px;
+            max-width: 95%;
+        }
+        #qr-reader {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
 
         @media (max-width: 768px) {
             .services-grid { grid-template-columns: repeat(3, 1fr); }
@@ -584,7 +601,8 @@
                 <li><a href="#" class="sidebar-link active" data-page="home"><i class="fas fa-home"></i> Home</a></li>
                 <li><a href="#" class="sidebar-link" data-page="wallet"><i class="fas fa-wallet"></i> Wallet</a></li>
                 <li><a href="#" class="sidebar-link" data-page="transactions"><i class="fas fa-exchange-alt"></i> Transactions</a></li>
-                <li><a href="#" class="sidebar-link" data-page="kyc"><i class="fas fa-user-check"></i> KYC Verify</a></li>
+                <!-- ### পরিবর্তিত: KYC Link এ ID যোগ করা হয়েছে ### -->
+                <li><a href="#" class="sidebar-link" data-page="kyc" id="sidebar-kyc-link"><i class="fas fa-user-check"></i> KYC Verify</a></li>
                 <li><a href="#" class="sidebar-link" data-page="profile"><i class="fas fa-user"></i> Profile</a></li>
                 <li><a href="#" class="sidebar-link" data-page="settings"><i class="fas fa-cog"></i> Settings</a></li>
                 <li><a href="#" id="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
@@ -597,7 +615,8 @@
                 <div class="page active" id="home-content">
                     <div class="welcome-section"><h2>Hello, <span id="user-name">User</span>!</h2><p>Welcome to Web Money Transfer</p></div>
                     <div id="home-kyc-status"></div>
-                    <div class="balance-card"><h3>Current Balance</h3><div class="balance-amount">$<span id="balance-amount">0.00</span></div></div>
+                    <!-- ### পরিবর্তিত: এই কার্ডটি এখন শর্তসাপেক্ষে হাইড হবে ### -->
+                    <div class="balance-card" id="home-balance-card"><h3>Current Balance</h3><div class="balance-amount">$<span id="balance-amount">0.00</span></div></div>
                     <div class="services-grid">
                         <div class="service-card add-money" data-service="add-money"><div class="service-icon"><i class="fas fa-plus"></i></div><h4>Add Money</h4></div>
                         <div class="service-card send-money" data-service="send-money"><div class="service-icon"><i class="fas fa-paper-plane"></i></div><h4>Send Money</h4></div>
@@ -694,7 +713,8 @@
                                     <button type="button" class="btn" id="scan-qr-send" style="width: auto;"><i class="fas fa-qrcode"></i></button>
                                 </div>
                             </div>
-                            <div class="form-group"><label for="send-amount">Amount ($)</label><input type="number" step="0.01" class="form-control" id="send-amount" placeholder="Min $10, Max $100" required></div>
+                            <!-- ### পরিবর্তিত: Placeholder এবং Amount সীমা পরিবর্তন করা হয়েছে ### -->
+                            <div class="form-group"><label for="send-amount">Amount ($)</label><input type="number" step="0.01" class="form-control" id="send-amount" placeholder="Min $0.01, Max $500" required></div>
                             <div class="fee-display" id="send-fee-display" style="display: none;"></div>
                             <div class="form-group" style="margin-top: 20px;"><label for="send-password">Your Password</label><input type="password" class="form-control" id="send-password" placeholder="Enter your password to confirm" required></div>
                             <button type="submit" class="btn" id="send-money-btn">Send Money</button>
@@ -735,6 +755,15 @@
             <p style="margin-top: 10px; color: var(--gray);">Your User ID: <strong id="modal-user-id"></strong></p>
         </div>
     </div>
+    
+    <!-- ### নতুন যুক্ত করা হয়েছে: QR Code Scanner Modal ### -->
+    <div class="modal-overlay" id="qr-scanner-modal">
+        <div class="modal-content">
+            <span class="modal-close" id="qr-scanner-close-btn">&times;</span>
+            <h3>Scan QR Code</h3>
+            <div id="qr-reader" style="width: 100%;"></div>
+        </div>
+    </div>
 
 
     <script>
@@ -760,6 +789,10 @@
 
     const allPages = ['login-page', 'signup-page', 'home-page'];
     const pages = document.querySelectorAll('.page');
+    
+    // ### নতুন যুক্ত করা হয়েছে: QR Scanner এর জন্য ভেরিয়েবল ###
+    let html5QrCodeScanner = null;
+    let activeQrInputId = null;
     
     function showMainContainer(pageId) {
         allPages.forEach(p => {
@@ -954,22 +987,42 @@
         loadTransactions();
     }
     
+    // ### পরিবর্তিত ফাংশন: KYC Status UI আপডেট ###
     function updateKycStatusUI() {
         const homeKycStatus = document.getElementById('home-kyc-status');
         const pageKycStatus = document.getElementById('kyc-status-page');
         const kycForm = document.getElementById('kyc-form-section');
+        const homeBalanceCard = document.getElementById('home-balance-card');
+        const sidebarKycLink = document.getElementById('sidebar-kyc-link');
+        
         homeKycStatus.innerHTML = '';
         pageKycStatus.innerHTML = '';
+
         if (currentUser.isKycVerified) {
             const verifiedHTML = `<div class="kyc-status kyc-verified"><i class="fas fa-check-circle"></i> KYC Verified</div>`;
-            homeKycStatus.innerHTML = verifiedHTML;
+            // pageKycStatus শুধুমাত্র KYC পেজে দেখানো হবে
             pageKycStatus.innerHTML = verifiedHTML;
             kycForm.style.display = 'none';
+
+            // হোম পেজ থেকে KYC ব্যানার এবং ব্যালেন্স কার্ড হাইড করা
+            homeKycStatus.style.display = 'none';
+            homeBalanceCard.style.display = 'none';
+
+            // সাইডবার মেনু টেক্সট পরিবর্তন করা
+            sidebarKycLink.innerHTML = `<i class="fas fa-check-circle"></i> KYC Verified`;
+            sidebarKycLink.classList.add('kyc-verified-link');
+            
         } else {
             const notVerifiedHTML = `<div class="kyc-status kyc-not-verified"><i class="fas fa-exclamation-triangle"></i> KYC Not Verified. Please verify to transact.</div>`;
             homeKycStatus.innerHTML = notVerifiedHTML;
             pageKycStatus.innerHTML = notVerifiedHTML;
+            homeKycStatus.style.display = 'block';
+            homeBalanceCard.style.display = 'block';
             kycForm.style.display = 'block';
+
+            // সাইডবার মেনু টেক্সট আগের মতো রাখা
+            sidebarKycLink.innerHTML = `<i class="fas fa-user-check"></i> KYC Verify`;
+            sidebarKycLink.classList.remove('kyc-verified-link');
         }
     }
     
@@ -1025,15 +1078,73 @@
     let mockRedeemCodes = [ { code: "WMTPROMO50", password: "pass", amount: 50, used: false, expiry: new Date('2025-12-31T23:59:59') }, { code: "WMTBONUS10", password: "123", amount: 10, used: false, expiry: new Date('2025-12-31T23:59:59') }, ];
     document.getElementById('redeem-btn').addEventListener('click', async () => { const redeemBtn = document.getElementById('redeem-btn'); const code = document.getElementById('redeem-code').value.trim(); const password = document.getElementById('redeem-password').value; const messageBox = document.getElementById('redeem-message'); if (!code || !password) { showMessage(messageBox, 'error', 'Please enter both code and password.'); return; } toggleButtonLoading(redeemBtn, true); const redeemData = mockRedeemCodes.find(c => c.code === code); if (!redeemData || redeemData.password !== password) { showMessage(messageBox, 'error', 'Invalid code or password.'); toggleButtonLoading(redeemBtn, false); return; } if (redeemData.used) { showMessage(messageBox, 'error', 'This code has been used.'); toggleButtonLoading(redeemBtn, false); return; } if (new Date() > redeemData.expiry) { showMessage(messageBox, 'error', 'This code has expired.'); toggleButtonLoading(redeemBtn, false); return; } redeemData.used = true; const newBalance = currentUser.balance + redeemData.amount; await db.collection('users').doc(currentUser.uid).update({ balance: newBalance }); await addTransaction(currentUser.uid, 'credit', redeemData.amount, `Redeemed Code`, 'fa-plus-circle'); showMessage(messageBox, 'success', `Successfully redeemed $${redeemData.amount.toFixed(2)}.`); document.getElementById('redeem-code').value = ''; document.getElementById('redeem-password').value = ''; toggleButtonLoading(redeemBtn, false); });
     const sendAmountInput = document.getElementById('send-amount'); const sendFeeDisplay = document.getElementById('send-fee-display'); const SEND_MONEY_FEE = 0.05; sendAmountInput.addEventListener('input', () => { const amount = parseFloat(sendAmountInput.value); if (amount > 0) { sendFeeDisplay.textContent = `Fee: $${SEND_MONEY_FEE.toFixed(2)}. Total: $${(amount + SEND_MONEY_FEE).toFixed(2)}`; sendFeeDisplay.style.display = 'block'; } else { sendFeeDisplay.style.display = 'none'; } });
-    document.getElementById('send-money-form').addEventListener('submit', async (e) => { e.preventDefault(); const sendBtn = document.getElementById('send-money-btn'); const recipientId = document.getElementById('recipient-id').value; const amount = parseFloat(sendAmountInput.value); const password = document.getElementById('send-password').value; const messageBox = document.getElementById('send-money-message'); if (amount < 10 || amount > 100) { showMessage(messageBox, 'error', 'Amount must be between $10 and $100.'); return; } toggleButtonLoading(sendBtn, true); try { await auth.signInWithEmailAndPassword(currentUser.email, password); } catch (error) { showMessage(messageBox, 'error', 'Incorrect password.'); toggleButtonLoading(sendBtn, false); return; } const totalDeduction = amount + SEND_MONEY_FEE; if (recipientId === currentUser.userId) { showMessage(messageBox, 'error', 'You cannot send to yourself.'); toggleButtonLoading(sendBtn, false); return; } if (totalDeduction > currentUser.balance) { showMessage(messageBox, 'error', `Insufficient balance.`); toggleButtonLoading(sendBtn, false); return; } const usersRef = db.collection('users'); const recipientQuery = await usersRef.where('userId', '==', recipientId).limit(1).get(); if (recipientQuery.empty) { showMessage(messageBox, 'error', 'Recipient not found.'); toggleButtonLoading(sendBtn, false); return; } const recipientDoc = recipientQuery.docs[0]; const recipient = { uid: recipientDoc.id, ...recipientDoc.data() }; try { await db.runTransaction(async (transaction) => { const senderDocRef = usersRef.doc(currentUser.uid); const recipientDocRef = usersRef.doc(recipient.uid); transaction.update(senderDocRef, { balance: firebase.firestore.FieldValue.increment(-totalDeduction) }); transaction.update(recipientDocRef, { balance: firebase.firestore.FieldValue.increment(amount) }); }); await addTransaction(currentUser.uid, 'debit', amount, `Sent to ${recipient.name}`, 'fa-paper-plane'); await addTransaction(currentUser.uid, 'debit', SEND_MONEY_FEE, 'Send Money Fee', 'fa-file-invoice-dollar'); await addTransaction(recipient.uid, 'credit', amount, `Received from ${currentUser.name}`, 'fa-download'); showMessage(messageBox, 'success', `Sent $${amount.toFixed(2)} to ${recipient.name}.`); document.getElementById('send-money-form').reset(); } catch (error) { showMessage(messageBox, 'error', 'Transaction failed: ' + error); } finally { toggleButtonLoading(sendBtn, false); } });
+    
+    // ### পরিবর্তিত: Send Money Validation লজিক ###
+    document.getElementById('send-money-form').addEventListener('submit', async (e) => { e.preventDefault(); const sendBtn = document.getElementById('send-money-btn'); const recipientId = document.getElementById('recipient-id').value; const amount = parseFloat(sendAmountInput.value); const password = document.getElementById('send-password').value; const messageBox = document.getElementById('send-money-message'); if (amount < 0.01 || amount > 500) { showMessage(messageBox, 'error', 'Amount must be between $0.01 and $500.'); return; } toggleButtonLoading(sendBtn, true); try { await auth.signInWithEmailAndPassword(currentUser.email, password); } catch (error) { showMessage(messageBox, 'error', 'Incorrect password.'); toggleButtonLoading(sendBtn, false); return; } const totalDeduction = amount + SEND_MONEY_FEE; if (recipientId === currentUser.userId) { showMessage(messageBox, 'error', 'You cannot send to yourself.'); toggleButtonLoading(sendBtn, false); return; } if (totalDeduction > currentUser.balance) { showMessage(messageBox, 'error', `Insufficient balance.`); toggleButtonLoading(sendBtn, false); return; } const usersRef = db.collection('users'); const recipientQuery = await usersRef.where('userId', '==', recipientId).limit(1).get(); if (recipientQuery.empty) { showMessage(messageBox, 'error', 'Recipient not found.'); toggleButtonLoading(sendBtn, false); return; } const recipientDoc = recipientQuery.docs[0]; const recipient = { uid: recipientDoc.id, ...recipientDoc.data() }; try { await db.runTransaction(async (transaction) => { const senderDocRef = usersRef.doc(currentUser.uid); const recipientDocRef = usersRef.doc(recipient.uid); transaction.update(senderDocRef, { balance: firebase.firestore.FieldValue.increment(-totalDeduction) }); transaction.update(recipientDocRef, { balance: firebase.firestore.FieldValue.increment(amount) }); }); await addTransaction(currentUser.uid, 'debit', amount, `Sent to ${recipient.name}`, 'fa-paper-plane'); await addTransaction(currentUser.uid, 'debit', SEND_MONEY_FEE, 'Send Money Fee', 'fa-file-invoice-dollar'); await addTransaction(recipient.uid, 'credit', amount, `Received from ${currentUser.name}`, 'fa-download'); showMessage(messageBox, 'success', `Sent $${amount.toFixed(2)} to ${recipient.name}.`); document.getElementById('send-money-form').reset(); } catch (error) { showMessage(messageBox, 'error', 'Transaction failed: ' + error); } finally { toggleButtonLoading(sendBtn, false); } });
     const moneyOutAmountInput = document.getElementById('money-out-amount'); const moneyOutFeeDisplay = document.getElementById('money-out-fee-display'); const MONEY_OUT_FEE_PERCENT = 0.01; moneyOutAmountInput.addEventListener('input', () => { const amount = parseFloat(moneyOutAmountInput.value); if (amount > 0) { const fee = amount * MONEY_OUT_FEE_PERCENT; moneyOutFeeDisplay.textContent = `Fee (1%): $${fee.toFixed(2)}. Total: $${(amount + fee).toFixed(2)}`; moneyOutFeeDisplay.style.display = 'block'; } else { moneyOutFeeDisplay.style.display = 'none'; } }); document.getElementById('money-out-form').addEventListener('submit', async (e) => { e.preventDefault(); const outBtn = document.getElementById('money-out-btn'); const agentId = document.getElementById('agent-id').value.trim(); const amount = parseFloat(moneyOutAmountInput.value); const messageBox = document.getElementById('money-out-message'); if (!agentId.startsWith("AWMT")) { showMessage(messageBox, 'error', 'Invalid Agent ID format.'); return; } toggleButtonLoading(outBtn, true); setTimeout(() => { showMessage(messageBox, 'success', `Request for $${amount.toFixed(2)} to Agent ${agentId} is processing.`); document.getElementById('money-out-form').reset(); toggleButtonLoading(outBtn, false); }, 2000); });
     document.getElementById('save-settings-btn').addEventListener('click', async () => { const newName = document.getElementById('settings-name').value; const newDob = document.getElementById('settings-dob').value; if (newName && newDob) { try { await db.collection('users').doc(currentUser.uid).update({ name: newName, dob: newDob }); alert('Settings saved!'); navigateTo('profile'); } catch (error) { alert('Error: ' + error.message); } } else { alert('Please fill all fields.'); } }); document.getElementById('change-password-btn').addEventListener('click', async () => { const currentPass = document.getElementById('current-password').value; const newPass = document.getElementById('new-password').value; if(newPass.length < 6) { alert("New password must be at least 6 characters."); return; } try { const credential = firebase.auth.EmailAuthProvider.credential(currentUser.email, currentPass); await auth.currentUser.reauthenticateWithCredential(credential); await auth.currentUser.updatePassword(newPass); alert("Password changed!"); document.getElementById('current-password').value = ''; document.getElementById('new-password').value = ''; } catch (error) { alert("Failed: " + error.message); } });
     const qrModal = document.getElementById('qr-modal'); const showQrBtn = document.getElementById('show-qr-btn'); const closeQrBtn = document.getElementById('modal-close-btn'); showQrBtn.addEventListener('click', () => { generateQRCode(currentUser.userId); document.getElementById('modal-user-id').textContent = currentUser.userId; qrModal.style.display = 'flex'; }); const closeModal = () => { qrModal.style.display = 'none'; }; closeQrBtn.addEventListener('click', closeModal); qrModal.addEventListener('click', (e) => { if(e.target === qrModal) { closeModal(); } });
     function showMessage(element, type, text) { element.className = `message-box ${type}`; element.innerHTML = `<div class="message-icon ${type}"><i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-times-circle'}"></i></div><p>${text}</p>`; element.style.display = 'block'; setTimeout(() => { element.style.display = 'none'; }, 5000); }
     function copyText(elementId) { const input = document.getElementById(elementId); input.select(); document.execCommand('copy'); alert(`Copied User ID: ${input.value}`); }
     function generateQRCode(text) { const qrContainer = document.getElementById('modal-qrcode-container'); qrContainer.innerHTML = ''; const qr = qrcode(0, 'L'); qr.addData(text); qr.make(); qrContainer.innerHTML = qr.createImgTag(6, 10); }
-    document.getElementById('scan-qr-send').addEventListener('click', () => { const result = prompt("Simulating QR Scan: Enter User ID"); if(result) document.getElementById('recipient-id').value = result; });
-    document.getElementById('scan-qr-out').addEventListener('click', () => { const result = prompt("Simulating QR Scan: Enter Agent ID"); if(result) document.getElementById('agent-id').value = result; });
+
+    // ### নতুন যুক্ত করা হয়েছে: QR Code Scanner এর সম্পূর্ণ লজিক ###
+    const qrScannerModal = document.getElementById('qr-scanner-modal');
+    
+    // QR স্ক্যানার শুরু করার ফাংশন
+    function startQrScanner(inputId) {
+        activeQrInputId = inputId;
+        qrScannerModal.style.display = 'flex';
+        
+        // যদি স্ক্যানার আগে থেকে চালু না থাকে
+        if (!html5QrCodeScanner) {
+            html5QrCodeScanner = new Html5Qrcode("qr-reader");
+        }
+        
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+        // ক্যামেরা শুরু করা
+        html5QrCodeScanner.start({ facingMode: "environment" }, config, onScanSuccess)
+        .catch(err => {
+            console.error("QR Scanner Error:", err);
+            alert("Could not start QR scanner. Please grant camera permission.");
+            stopQrScanner();
+        });
+    }
+
+    // স্ক্যান সফল হলে এই ফাংশন কাজ করবে
+    function onScanSuccess(decodedText, decodedResult) {
+        if (activeQrInputId) {
+            document.getElementById(activeQrInputId).value = decodedText;
+        }
+        stopQrScanner();
+    }
+
+    // স্ক্যানার বন্ধ করার ফাংশন
+    function stopQrScanner() {
+        if (html5QrCodeScanner && html5QrCodeScanner.isScanning) {
+            html5QrCodeScanner.stop().then(() => {
+                // console.log("QR Scanner stopped.");
+            }).catch(err => {
+                console.error("Failed to stop QR Scanner:", err);
+            });
+        }
+        qrScannerModal.style.display = 'none';
+        activeQrInputId = null;
+    }
+
+    // 'Send Money' পেজের QR বাটনে ইভেন্ট যোগ করা
+    document.getElementById('scan-qr-send').addEventListener('click', () => {
+        startQrScanner('recipient-id');
+    });
+
+    // 'Money Out' পেজের QR বাটনে ইভেন্ট যোগ করা
+    document.getElementById('scan-qr-out').addEventListener('click', () => {
+        startQrScanner('agent-id');
+    });
+    
+    // স্ক্যানার মডালের ক্লোজ বাটনে ইভেন্ট যোগ করা
+    document.getElementById('qr-scanner-close-btn').addEventListener('click', stopQrScanner);
+    
     </script>
 </body>
 </html>
