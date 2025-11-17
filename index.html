@@ -411,6 +411,24 @@
         .transaction-amount { font-weight: 600; }
         .credit { color: var(--secondary); }
         .debit { color: var(--danger); }
+        
+        /* New Styles for Transaction ID */
+        .transaction-id-container {
+            font-size: 12px;
+            color: var(--gray);
+            margin-top: 5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .copy-icon {
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .copy-icon:hover {
+            color: var(--primary);
+        }
+
 
         .form-page {
             background: white;
@@ -535,6 +553,22 @@
             border-radius: 8px;
         }
 
+        /* NEW: Confirmation Popup Styles */
+        .confirmation-details .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            font-size: 15px;
+        }
+        .confirmation-details .info-row span {
+            color: var(--gray);
+        }
+        
+        .confirmation-details .info-row strong.mono-font {
+             font-family: monospace;
+             font-size: 14px;
+        }
+
 
         @media (max-width: 768px) {
             .services-grid { grid-template-columns: repeat(3, 1fr); }
@@ -633,7 +667,7 @@
                         <div class="balance-card"><h3>Available Balance</h3><div class="balance-amount">$<span id="wallet-balance">0.00</span></div></div>
                         <div class="user-id-section">
                             <h4>Your Unique User ID</h4><p>Use this ID to receive money from other WMT users.</p>
-                            <div class="user-id-display"><input type="text" id="wallet-user-id" value="WMT12345" readonly><button class="copy-btn" onclick="copyText('wallet-user-id')">Copy</button></div>
+                            <div class="user-id-display"><input type="text" id="wallet-user-id" value="WMT12345" readonly><button class="copy-btn" onclick="copyToClipboard(document.getElementById('wallet-user-id').value, 'User ID')">Copy</button></div>
                         </div>
                     </div>
                 </div>
@@ -663,7 +697,7 @@
                         <div class="form-group"><label>Full Name</label><div class="form-control" style="background: #f9f9f9;" id="profile-name"></div></div>
                         <div class="form-group">
                             <label>User ID</label>
-                            <div class="user-id-display"><input type="text" class="form-control" id="profile-user-id" value="WMT12345" readonly><button class="copy-btn" onclick="copyText('profile-user-id')">Copy</button></div>
+                            <div class="user-id-display"><input type="text" class="form-control" id="profile-user-id" value="WMT12345" readonly><button class="copy-btn" onclick="copyToClipboard(document.getElementById('profile-user-id').value, 'User ID')">Copy</button></div>
                         </div>
                         <div class="form-group"><label>Email</label><div class="form-control" style="background: #f9f9f9;" id="profile-email"></div></div>
                         <div class="form-group"><label>Date of Birth</label><div class="form-control" style="background: #f9f9f9;" id="profile-dob"></div></div>
@@ -704,13 +738,13 @@
                         <h2>Send Money</h2>
                         <form id="send-money-form">
                             <div class="form-group">
-                                <label for="recipient-id">Recipient User ID</label>
+                                <label for="recipient-id">Recipient User ID (WMT ID)</label>
                                 <div style="display: flex; gap: 10px;">
                                     <input type="text" class="form-control" id="recipient-id" placeholder="Enter recipient's WMT ID" required>
                                     <button type="button" class="btn" id="scan-qr-send" style="width: auto;"><i class="fas fa-qrcode"></i></button>
                                 </div>
                             </div>
-                            <div class="form-group"><label for="send-amount">Amount ($)</label><input type="number" step="0.01" class="form-control" id="send-amount" placeholder="Min $0.01, Max $500" required></div>
+                            <div class="form-group"><label for="send-amount">Amount ($)</label><input type="number" step="0.01" class="form-control" id="send-amount" placeholder="Min $0.01, Max $100" required></div>
                             <div class="fee-display" id="send-fee-display" style="display: none;"></div>
                             <div class="form-group" style="margin-top: 20px;"><label for="send-password">Your Password</label><input type="password" class="form-control" id="send-password" placeholder="Enter your password to confirm" required></div>
                             <button type="submit" class="btn" id="send-money-btn">Send Money</button>
@@ -724,7 +758,7 @@
                         <h2>Money Out</h2>
                         <form id="money-out-form">
                            <div class="form-group">
-                                <label for="agent-id">Agent User ID</label>
+                                <label for="agent-id">Agent User ID (AWMT ID)</label>
                                 <div style="display: flex; gap: 10px;">
                                     <input type="text" class="form-control" id="agent-id" placeholder="Enter Agent's AWMT ID" required>
                                     <button type="button" class="btn" id="scan-qr-out" style="width: auto;"><i class="fas fa-qrcode"></i></button>
@@ -738,6 +772,28 @@
                          <div id="money-out-message" class="message-box"></div>
                     </div>
                 </div>
+                
+                <!-- NEW PAYMENT PAGE -->
+                <div class="page" id="payment-content">
+                    <div class="form-page">
+                        <h2>Payment</h2>
+                        <form id="payment-form">
+                           <div class="form-group">
+                                <label for="payment-id">Merchant ID (PWMT ID)</label>
+                                <div style="display: flex; gap: 10px;">
+                                    <input type="text" class="form-control" id="payment-id" placeholder="Enter Merchant's PWMT ID" required>
+                                    <button type="button" class="btn" id="scan-qr-payment" style="width: auto;"><i class="fas fa-qrcode"></i></button>
+                                </div>
+                            </div>
+                            <div class="form-group"><label for="payment-amount">Amount ($)</label><input type="number" step="0.01" class="form-control" id="payment-amount" placeholder="Enter payment amount" required></div>
+                            <div class="fee-display">Fee: $0.00 (No fee for payments)</div>
+                            <div class="form-group" style="margin-top: 20px;"><label for="payment-password">Your Password</label><input type="password" class="form-control" id="payment-password" placeholder="Enter your password to confirm" required></div>
+                            <button type="submit" class="btn" id="payment-btn">Make Payment</button>
+                        </form>
+                         <div id="payment-message" class="message-box"></div>
+                    </div>
+                </div>
+
             </div>
         </main>
     </div>
@@ -758,6 +814,53 @@
             <span class="modal-close" id="qr-scanner-close-btn">&times;</span>
             <h3>Scan QR Code</h3>
             <div id="qr-reader" style="width: 100%;"></div>
+        </div>
+    </div>
+
+    <!-- UPDATED: Transaction Confirmation Modal -->
+    <div class="modal-overlay" id="confirmation-modal" style="display: none; align-items: center; justify-content: center;">
+        <div class="modal-content" style="max-width: 450px; text-align: left;">
+            <div style="text-align: center; color: var(--secondary); margin-bottom: 20px;">
+                <i class="fas fa-check-circle" style="font-size: 60px;"></i>
+                <h3 style="margin-top: 15px; font-size: 22px;">Transaction Successful</h3>
+            </div>
+            
+            <div class="confirmation-details">
+                <div class="info-row">
+                    <span>Amount:</span>
+                    <strong id="confirm-amount"></strong>
+                </div>
+                <div class="info-row">
+                    <span>Service Fee:</span>
+                    <strong id="confirm-fee"></strong>
+                </div>
+                <div class="info-row">
+                    <span>Total Deducted:</span>
+                    <strong id="confirm-total"></strong>
+                </div>
+                <hr style="margin: 12px 0; border-top: 1px solid #eee;">
+                <div class="info-row">
+                    <span>Remaining Balance:</span>
+                    <strong id="confirm-balance"></strong>
+                </div>
+                 <div class="info-row">
+                    <span>Date & Time:</span>
+                    <strong id="confirm-datetime"></strong>
+                </div>
+                <!-- NEW DYNAMIC ID ROW -->
+                <div class="info-row" id="confirm-id-row" style="display: none;">
+                    <span id="confirm-id-label"></span>
+                    <strong id="confirm-id-value" class="mono-font"></strong>
+                </div>
+                <div class="info-row" style="align-items: center;">
+                    <span>Transaction ID:</span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <strong id="confirm-tx-id" class="mono-font" style="font-size: 12px;"></strong>
+                        <i class="fas fa-copy" id="confirm-copy-btn" style="cursor: pointer; color: var(--primary);"></i>
+                    </div>
+                </div>
+            </div>
+            <button class="btn" id="confirmation-close-btn" style="margin-top: 25px;">Done</button>
         </div>
     </div>
 
@@ -782,6 +885,13 @@
 
     let currentUser = null; 
     let signupProfileUrl = 'https://res.cloudinary.com/dntvrm1wn/image/upload/v1625151899/avatar_ml_default.png'; 
+    let servicesAreEnabled = true; // Global variable for service status
+    
+    // Default fees, will be updated from Firestore
+    let configFees = {
+        sendMoneyFixedFee: 0.05,
+        moneyOutPercentageFee: 0.01
+    };
 
     const allPages = ['login-page', 'signup-page', 'home-page'];
     const pages = document.querySelectorAll('.page');
@@ -834,15 +944,26 @@
         });
     });
     
+    // MODIFIED: Service card click listener with service status check
     document.querySelectorAll('.service-card').forEach(card => {
         card.addEventListener('click', () => {
+            if (!servicesAreEnabled) {
+                alert("All services are temporarily disabled by the admin. Please try again later.");
+                return;
+            }
             if (currentUser && !currentUser.isKycVerified) {
                 alert("Please complete KYC verification to use any services.");
                 navigateTo('kyc');
                 return;
             }
             const service = card.getAttribute('data-service');
-            const pageMap = { 'add-money': 'add-money', 'send-money': 'send-money', 'money-out': 'money-out' };
+            // UPDATED pageMap to include payment
+            const pageMap = { 
+                'add-money': 'add-money', 
+                'send-money': 'send-money', 
+                'money-out': 'money-out',
+                'payment': 'payment' // Added payment page
+            };
             if (pageMap[service]) {
                 navigateTo(pageMap[service]);
             } else {
@@ -951,10 +1072,45 @@
         e.preventDefault();
         auth.signOut().then(closeSidebar);
     });
+
+    // --- Listen for Fee Configuration from Admin ---
+    function listenForFeeUpdates() {
+        db.collection('settings').doc('fees').onSnapshot((doc) => {
+            if (doc.exists) {
+                console.log("Fee configuration updated from Firestore.");
+                const feeData = doc.data();
+                configFees.sendMoneyFixedFee = feeData.sendMoneyFixedFee || 0.05;
+                configFees.moneyOutPercentageFee = feeData.moneyOutPercentageFee || 0.01;
+            } else {
+                console.log("No fee configuration found in Firestore, using default values.");
+            }
+        }, (error) => {
+            console.error("Error fetching fee configuration:", error);
+        });
+    }
+    
+    // --- NEW: Listen for Service Status from Admin ---
+    function listenForServiceStatus() {
+        db.collection('settings').doc('status').onSnapshot((doc) => {
+            if (doc.exists && doc.data().servicesEnabled === false) {
+                servicesAreEnabled = false;
+                console.log("Services are currently DISABLED by admin.");
+            } else {
+                servicesAreEnabled = true;
+                console.log("Services are ENABLED.");
+            }
+        }, (error) => {
+            console.error("Error fetching service status:", error);
+            // In case of error, assume services are enabled to not block users unnecessarily
+            servicesAreEnabled = true;
+        });
+    }
     
     function initializeAppUI() {
         if (!currentUser) return;
         showMainContainer('home-page');
+        listenForFeeUpdates();
+        listenForServiceStatus(); // Start listening for service status
         const initialPage = window.location.hash ? window.location.hash.substring(1) : 'home';
         showPage(initialPage);
         history.replaceState({ page: initialPage }, '', `#${initialPage}`);
@@ -966,7 +1122,6 @@
         const formattedBalance = (currentUser.balance || 0).toFixed(2);
         
         // ===== জাভাস্ক্রিপ্ট থেকেও হোম পেজের ব্যালেন্স আপডেট করার লাইনটি সরিয়ে দেওয়া হয়েছে =====
-        // document.getElementById('balance-amount').textContent = formattedBalance; // এই লাইনটি এখন অপ্রয়োজনীয়
         
         document.getElementById('wallet-balance').textContent = formattedBalance;
         document.getElementById('user-name').textContent = currentUser.name.split(' ')[0];
@@ -1012,10 +1167,18 @@
         }
     }
     
+    // Return the transaction ID
     async function addTransaction(uid, type, amount, description, icon) { 
-        if (!uid) return; 
+        if (!uid) return null; 
         const transaction = { type, amount, description, icon, date: firebase.firestore.Timestamp.now() }; 
-        await db.collection('users').doc(uid).collection('transactions').add(transaction); 
+        try {
+            const docRef = await db.collection('users').doc(uid).collection('transactions').add(transaction);
+            await docRef.update({ transactionId: docRef.id });
+            return docRef.id; // Return the new transaction ID
+        } catch (error) {
+            console.error("Error creating transaction:", error);
+            return null;
+        }
     }
 
     function loadTransactions() { 
@@ -1032,6 +1195,7 @@
             }
             querySnapshot.forEach(doc => { 
                 const tx = doc.data(); 
+                tx.transactionId = tx.transactionId || doc.id; 
                 const readableDate = tx.date.toDate().toLocaleString(); 
                 const txElement = createTransactionElement(tx, readableDate); 
                 document.getElementById('all-transactions').appendChild(txElement.cloneNode(true)); 
@@ -1049,7 +1213,25 @@
         const isCredit = tx.type === 'credit'; 
         const color = isCredit ? 'var(--secondary)' : 'var(--danger)'; 
         const sign = isCredit ? '+' : '-'; 
-        li.innerHTML = `<div class="transaction-info"><div class="transaction-icon" style="background-color: ${color};"><i class="fas ${tx.icon}"></i></div><div class="transaction-details"><h4>${tx.description}</h4><p>${date}</p></div></div><div class="transaction-amount ${tx.type}">${sign}$${tx.amount.toFixed(2)}</div>`; 
+        const shortTxId = tx.transactionId.substring(0, 8) + '...';
+        
+        li.innerHTML = `
+            <div class="transaction-info">
+                <div class="transaction-icon" style="background-color: ${color};">
+                    <i class="fas ${tx.icon}"></i>
+                </div>
+                <div class="transaction-details">
+                    <h4>${tx.description}</h4>
+                    <p>${date}</p>
+                    <div class="transaction-id-container">
+                        <span>ID: ${shortTxId}</span>
+                        <i class="fas fa-copy copy-icon" onclick="copyToClipboard('${tx.transactionId}', 'Transaction ID')"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="transaction-amount ${tx.type}">
+                ${sign}$${tx.amount.toFixed(2)}
+            </div>`; 
         return li; 
     }
     
@@ -1128,6 +1310,7 @@
         }
     });
 
+    // UPDATED: Redeem button to show confirmation popup
     document.getElementById('redeem-btn').addEventListener('click', async () => {
         const redeemBtn = document.getElementById('redeem-btn');
         const code = document.getElementById('redeem-code').value.trim().toUpperCase();
@@ -1164,15 +1347,13 @@
 
             const userRef = db.collection('users').doc(currentUser.uid);
             const redeemCodeRef = redeemDoc.ref;
-
+            
             await db.runTransaction(async (transaction) => {
                 const userDoc = await transaction.get(userRef);
-                if (!userDoc.exists) {
-                    throw new Error("User document does not exist!");
-                }
-                transaction.update(userRef, { 
-                    balance: firebase.firestore.FieldValue.increment(redeemData.amount) 
-                });
+                if (!userDoc.exists) throw new Error("User document does not exist!");
+                
+                const newBalance = (userDoc.data().balance || 0) + redeemData.amount;
+                transaction.update(userRef, { balance: newBalance });
                 transaction.update(redeemCodeRef, { 
                     isUsed: true,
                     usedBy: currentUser.uid,
@@ -1180,11 +1361,17 @@
                 });
             });
 
-            await addTransaction(currentUser.uid, 'credit', redeemData.amount, `Redeemed Code`, 'fa-plus-circle');
+            const txId = await addTransaction(currentUser.uid, 'credit', redeemData.amount, `Redeemed Code`, 'fa-plus-circle');
             
-            showMessage(messageBox, 'success', `Successfully redeemed $${redeemData.amount.toFixed(2)}.`);
+            showConfirmationPopup({
+                amount: redeemData.amount,
+                fee: 0,
+                finalBalance: currentUser.balance,
+                txId: txId,
+                idLabel: "Redeem Code",
+                idValue: code
+            });
             
-            // ===== সমাধান: .reset() এর পরিবর্তে ইনপুট বক্স খালি করা হচ্ছে =====
             document.getElementById('redeem-code').value = '';
             document.getElementById('redeem-password').value = '';
 
@@ -1198,18 +1385,19 @@
     
     const sendAmountInput = document.getElementById('send-amount'); 
     const sendFeeDisplay = document.getElementById('send-fee-display'); 
-    const SEND_MONEY_FEE = 0.05; 
     
     sendAmountInput.addEventListener('input', () => { 
         const amount = parseFloat(sendAmountInput.value); 
+        const fee = configFees.sendMoneyFixedFee;
         if (amount > 0) { 
-            sendFeeDisplay.textContent = `Fee: $${SEND_MONEY_FEE.toFixed(2)}. Total: $${(amount + SEND_MONEY_FEE).toFixed(2)}`; 
+            sendFeeDisplay.textContent = `Fee: $${fee.toFixed(2)}. Total: $${(amount + fee).toFixed(2)}`; 
             sendFeeDisplay.style.display = 'block'; 
         } else { 
             sendFeeDisplay.style.display = 'none'; 
         } 
     });
     
+    // UPDATED: Send money form submission to show confirmation popup with WMT ID
     document.getElementById('send-money-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const sendBtn = document.getElementById('send-money-btn');
@@ -1217,13 +1405,19 @@
         const amount = parseFloat(sendAmountInput.value);
         const password = document.getElementById('send-password').value;
         const messageBox = document.getElementById('send-money-message');
+        const fee = configFees.sendMoneyFixedFee;
+
+        if (!servicesAreEnabled) {
+            showMessage(messageBox, 'error', "Services are temporarily disabled by the admin.");
+            return;
+        }
 
         if (!recipientId || !amount || !password) {
              showMessage(messageBox, 'error', 'Please fill all fields.');
              return;
         }
-        if (amount < 0.01 || amount > 500) {
-            showMessage(messageBox, 'error', 'Amount must be between $0.01 and $500.');
+        if (amount < 0.01 || amount > 100) {
+            showMessage(messageBox, 'error', 'Amount must be between $0.01 and $100.');
             return;
         }
 
@@ -1233,7 +1427,7 @@
             const credential = firebase.auth.EmailAuthProvider.credential(currentUser.email, password);
             await auth.currentUser.reauthenticateWithCredential(credential);
 
-            const totalDeduction = amount + SEND_MONEY_FEE;
+            const totalDeduction = amount + fee;
             if (recipientId === currentUser.userId) {
                 throw new Error("You cannot send money to yourself.");
             }
@@ -1259,11 +1453,21 @@
                 transaction.update(recipientDocRef, { balance: firebase.firestore.FieldValue.increment(amount) });
             });
 
-            await addTransaction(currentUser.uid, 'debit', amount, `Sent to ${recipient.name}`, 'fa-paper-plane');
-            await addTransaction(currentUser.uid, 'debit', SEND_MONEY_FEE, 'Send Money Fee', 'fa-file-invoice-dollar');
+            const txId = await addTransaction(currentUser.uid, 'debit', amount, `Sent to ${recipient.name}`, 'fa-paper-plane');
+            await addTransaction(recipient.uid, 'credit', amount, `Received from ${currentUser.name}`, 'fa-wallet');
+            await addTransaction(currentUser.uid, 'debit', fee, 'Send Money Fee', 'fa-file-invoice-dollar');
             
-            showMessage(messageBox, 'success', `Sent $${amount.toFixed(2)} to ${recipient.name}.`);
+            showConfirmationPopup({
+                amount: amount,
+                fee: fee,
+                finalBalance: currentUser.balance,
+                txId: txId,
+                idLabel: "WMT ID",
+                idValue: recipient.userId
+            });
+            
             e.target.reset();
+            sendFeeDisplay.style.display = 'none';
 
         } catch (error) {
             showMessage(messageBox, 'error', `Transaction failed: ${error.message}`);
@@ -1275,37 +1479,157 @@
 
     const moneyOutAmountInput = document.getElementById('money-out-amount'); 
     const moneyOutFeeDisplay = document.getElementById('money-out-fee-display'); 
-    const MONEY_OUT_FEE_PERCENT = 0.01; 
     
     moneyOutAmountInput.addEventListener('input', () => { 
         const amount = parseFloat(moneyOutAmountInput.value); 
+        const feePercent = configFees.moneyOutPercentageFee;
         if (amount > 0) { 
-            const fee = amount * MONEY_OUT_FEE_PERCENT; 
-            moneyOutFeeDisplay.textContent = `Fee (1%): $${fee.toFixed(2)}. Total: $${(amount + fee).toFixed(2)}`; 
+            const fee = amount * feePercent; 
+            moneyOutFeeDisplay.textContent = `Fee (${(feePercent * 100).toFixed(1)}%): $${fee.toFixed(2)}. Total: $${(amount + fee).toFixed(2)}`; 
             moneyOutFeeDisplay.style.display = 'block'; 
         } else { 
             moneyOutFeeDisplay.style.display = 'none'; 
         } 
     }); 
     
+    // UPDATED: Money Out form with full functionality and confirmation popup
     document.getElementById('money-out-form').addEventListener('submit', async (e) => { 
         e.preventDefault(); 
         const outBtn = document.getElementById('money-out-btn'); 
         const agentId = document.getElementById('agent-id').value.trim(); 
         const amount = parseFloat(moneyOutAmountInput.value); 
+        const password = document.getElementById('money-out-password').value;
         const messageBox = document.getElementById('money-out-message'); 
+        const feePercent = configFees.moneyOutPercentageFee;
+        const fee = amount * feePercent;
+        const totalDeduction = amount + fee;
+
         if (!agentId.startsWith("AWMT")) { 
-            showMessage(messageBox, 'error', 'Invalid Agent ID format.'); 
+            showMessage(messageBox, 'error', 'Invalid Agent ID format. It must start with AWMT.'); 
             return; 
         } 
+        if (!amount || !password) {
+             showMessage(messageBox, 'error', 'Please fill all fields.');
+             return;
+        }
+
         toggleButtonLoading(outBtn, true); 
-        setTimeout(() => { 
-            showMessage(messageBox, 'success', `Request for $${amount.toFixed(2)} to Agent ${agentId} is processing.`); 
-            document.getElementById('money-out-form').reset(); 
+        
+        try {
+            const credential = firebase.auth.EmailAuthProvider.credential(currentUser.email, password);
+            await auth.currentUser.reauthenticateWithCredential(credential);
+            
+            if (totalDeduction > (currentUser.balance || 0)) {
+                throw new Error("Insufficient balance for money out and fees.");
+            }
+
+            const usersRef = db.collection('users');
+            const agentQuery = usersRef.where('userId', '==', agentId).limit(1);
+            const agentSnapshot = await agentQuery.get();
+
+            if (agentSnapshot.empty) {
+                throw new Error("Agent not found.");
+            }
+            const agentDoc = agentSnapshot.docs[0];
+            const agent = { uid: agentDoc.id, ...agentDoc.data() };
+
+            await db.runTransaction(async (transaction) => {
+                const userDocRef = usersRef.doc(currentUser.uid);
+                const agentDocRef = usersRef.doc(agent.uid);
+                
+                transaction.update(userDocRef, { balance: firebase.firestore.FieldValue.increment(-totalDeduction) });
+                transaction.update(agentDocRef, { balance: firebase.firestore.FieldValue.increment(amount) });
+            });
+            
+            const txId = await addTransaction(currentUser.uid, 'debit', amount, `Money Out to Agent ${agent.name}`, 'fa-money-bill-wave');
+            await addTransaction(currentUser.uid, 'debit', fee, 'Money Out Fee', 'fa-file-invoice-dollar');
+
+            showConfirmationPopup({
+                amount: amount,
+                fee: fee,
+                finalBalance: currentUser.balance,
+                txId: txId,
+                idLabel: "Agent ID", // Using AWMT as per user request
+                idValue: agent.userId
+            });
+
+            e.target.reset();
+            moneyOutFeeDisplay.style.display = 'none';
+
+        } catch(error) {
+            showMessage(messageBox, 'error', `Money Out failed: ${error.message}`);
+        } finally {
             toggleButtonLoading(outBtn, false); 
-        }, 2000); 
+            document.getElementById('money-out-password').value = '';
+        }
     });
     
+    // NEW: Payment form functionality
+    document.getElementById('payment-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const paymentBtn = document.getElementById('payment-btn');
+        const paymentId = document.getElementById('payment-id').value.trim();
+        const amount = parseFloat(document.getElementById('payment-amount').value);
+        const password = document.getElementById('payment-password').value;
+        const messageBox = document.getElementById('payment-message');
+        const fee = 0; // No fee for payments
+
+        if (!paymentId.startsWith("PWMT")) { 
+            showMessage(messageBox, 'error', 'Invalid Merchant ID format. It must start with PWMT.'); 
+            return; 
+        }
+        if (!amount || !password) {
+             showMessage(messageBox, 'error', 'Please fill all fields.');
+             return;
+        }
+        toggleButtonLoading(paymentBtn, true);
+        try {
+            const credential = firebase.auth.EmailAuthProvider.credential(currentUser.email, password);
+            await auth.currentUser.reauthenticateWithCredential(credential);
+
+            if (amount > (currentUser.balance || 0)) {
+                throw new Error("Insufficient balance.");
+            }
+
+            const usersRef = db.collection('users');
+            const merchantQuery = usersRef.where('userId', '==', paymentId).limit(1);
+            const merchantSnapshot = await merchantQuery.get();
+
+            if (merchantSnapshot.empty) {
+                throw new Error("Merchant not found.");
+            }
+            const merchantDoc = merchantSnapshot.docs[0];
+            const merchant = { uid: merchantDoc.id, ...merchantDoc.data() };
+
+            await db.runTransaction(async (transaction) => {
+                const userDocRef = usersRef.doc(currentUser.uid);
+                const merchantDocRef = usersRef.doc(merchant.uid);
+                
+                transaction.update(userDocRef, { balance: firebase.firestore.FieldValue.increment(-amount) });
+                transaction.update(merchantDocRef, { balance: firebase.firestore.FieldValue.increment(amount) });
+            });
+
+            const txId = await addTransaction(currentUser.uid, 'debit', amount, `Payment to ${merchant.name}`, 'fa-credit-card');
+            await addTransaction(merchant.uid, 'credit', amount, `Payment from ${currentUser.name}`, 'fa-credit-card');
+            
+            showConfirmationPopup({
+                amount: amount,
+                fee: fee,
+                finalBalance: currentUser.balance,
+                txId: txId,
+                idLabel: "PWMT ID",
+                idValue: merchant.userId
+            });
+            
+            e.target.reset();
+        } catch (error) {
+            showMessage(messageBox, 'error', `Payment failed: ${error.message}`);
+        } finally {
+            toggleButtonLoading(paymentBtn, false);
+            document.getElementById('payment-password').value = '';
+        }
+    });
+
     document.getElementById('save-settings-btn').addEventListener('click', async () => { 
         const newName = document.getElementById('settings-name').value; 
         const newDob = document.getElementById('settings-dob').value; 
@@ -1322,6 +1646,7 @@
         } 
     }); 
     
+    // Improved error handling for password change
     document.getElementById('change-password-btn').addEventListener('click', async () => { 
         const currentPass = document.getElementById('current-password').value; 
         const newPass = document.getElementById('new-password').value; 
@@ -1333,11 +1658,15 @@
             const credential = firebase.auth.EmailAuthProvider.credential(currentUser.email, currentPass); 
             await auth.currentUser.reauthenticateWithCredential(credential); 
             await auth.currentUser.updatePassword(newPass); 
-            alert("Password changed!"); 
+            alert("Password changed successfully!"); 
             document.getElementById('current-password').value = ''; 
             document.getElementById('new-password').value = ''; 
         } catch (error) { 
-            alert("Failed: " + error.message); 
+            if (error.code === 'auth/wrong-password') {
+                alert("Failed: The current password you entered is incorrect.");
+            } else {
+                alert("Failed: " + error.message); 
+            }
         } 
     });
     
@@ -1369,12 +1698,30 @@
         setTimeout(() => { element.style.display = 'none'; }, 5000); 
     }
     
-    function copyText(elementId) { 
-        const input = document.getElementById(elementId); 
-        input.select(); 
-        document.execCommand('copy'); 
-        alert(`Copied User ID: ${input.value}`); 
+    function copyToClipboard(text, entityName = 'Text') {
+        if (!navigator.clipboard) {
+            try {
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                alert(`${entityName} copied to clipboard!`);
+            } catch (err) {
+                alert('Failed to copy text.');
+            }
+            return;
+        }
+        navigator.clipboard.writeText(text).then(() => {
+            alert(`${entityName} copied: ${text}`);
+        }).catch(err => {
+            console.error('Failed to copy: ', err);
+            alert('Could not copy text.');
+        });
     }
+
     
     function generateQRCode(text) { 
         const qrContainer = document.getElementById('modal-qrcode-container'); 
@@ -1415,7 +1762,44 @@
     
     document.getElementById('scan-qr-send').addEventListener('click', () => startQrScanner('recipient-id'));
     document.getElementById('scan-qr-out').addEventListener('click', () => startQrScanner('agent-id'));
+    document.getElementById('scan-qr-payment').addEventListener('click', () => startQrScanner('payment-id')); // New QR scanner for payment
     document.getElementById('qr-scanner-close-btn').addEventListener('click', stopQrScanner);
+
+    // UPDATED: Function to show confirmation modal with dynamic ID field
+    const confirmationModal = document.getElementById('confirmation-modal');
+
+    function showConfirmationPopup(details) {
+        const amount = details.amount || 0;
+        const fee = details.fee || 0;
+        
+        document.getElementById('confirm-amount').textContent = `$${amount.toFixed(2)}`;
+        document.getElementById('confirm-fee').textContent = `$${fee.toFixed(2)}`;
+        document.getElementById('confirm-total').textContent = `$${(amount + fee).toFixed(2)}`;
+        document.getElementById('confirm-balance').textContent = `$${details.finalBalance.toFixed(2)}`;
+        document.getElementById('confirm-datetime').textContent = new Date().toLocaleString();
+        document.getElementById('confirm-tx-id').textContent = details.txId.substring(0, 10) + '...';
+
+        const idRow = document.getElementById('confirm-id-row');
+        const idLabel = document.getElementById('confirm-id-label');
+        const idValue = document.getElementById('confirm-id-value');
+
+        if (details.idLabel && details.idValue) {
+            idLabel.textContent = `${details.idLabel}:`;
+            idValue.textContent = details.idValue;
+            idRow.style.display = 'flex';
+        } else {
+            idRow.style.display = 'none';
+        }
+
+        const copyBtn = document.getElementById('confirm-copy-btn');
+        copyBtn.onclick = () => copyToClipboard(details.txId, 'Transaction ID');
+
+        confirmationModal.style.display = 'flex';
+    }
+
+    document.getElementById('confirmation-close-btn').addEventListener('click', () => {
+        confirmationModal.style.display = 'none';
+    });
     
     </script>
 </body>
