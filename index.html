@@ -1167,14 +1167,36 @@
         }
     }
     
-    // Return the transaction ID
-    async function addTransaction(uid, type, amount, description, icon) { 
-        if (!uid) return null; 
-        const transaction = { type, amount, description, icon, date: firebase.firestore.Timestamp.now() }; 
+    // ===[ CODE UPDATED ]===
+    // This function now accepts a 'providedTxId' to ensure a single, consistent transaction ID
+    // can be used across multiple user logs (e.g., sender and receiver) for the same event.
+    async function addTransaction(uid, type, amount, description, icon, providedTxId) {
+        if (!uid) return null;
+        const collectionRef = db.collection('users').doc(uid).collection('transactions');
+        
+        const transactionData = {
+            type,
+            amount,
+            description,
+            icon,
+            date: firebase.firestore.Timestamp.now(),
+            transactionId: providedTxId || null
+        };
+
         try {
-            const docRef = await db.collection('users').doc(uid).collection('transactions').add(transaction);
-            await docRef.update({ transactionId: docRef.id });
-            return docRef.id; // Return the new transaction ID
+            let docRef;
+            if (providedTxId) {
+                // If an ID is provided, use it to set the document. This ensures the doc ID is the same as the transactionId.
+                docRef = collectionRef.doc(providedTxId);
+                transactionData.transactionId = providedTxId;
+                await docRef.set(transactionData);
+            } else {
+                // If no ID is provided (e.g., for redeem), auto-generate one with .add().
+                docRef = await collectionRef.add(transactionData);
+                // Then update the record to include its own ID for consistency.
+                await docRef.update({ transactionId: docRef.id });
+            }
+            return docRef.id; // Return the ID that was used or generated.
         } catch (error) {
             console.error("Error creating transaction:", error);
             return null;
@@ -1360,7 +1382,7 @@
                     usedAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
             });
-
+            // The updated addTransaction function is called here without a provided ID, so it will generate one automatically.
             const txId = await addTransaction(currentUser.uid, 'credit', redeemData.amount, `Redeemed Code`, 'fa-plus-circle');
             
             showConfirmationPopup({
@@ -1397,7 +1419,7 @@
         } 
     });
     
-    // UPDATED: Send money form submission to show confirmation popup with WMT ID
+    // ===[ CODE UPDATED ]===
     document.getElementById('send-money-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const sendBtn = document.getElementById('send-money-btn');
@@ -1445,6 +1467,9 @@
             const recipientDoc = recipientSnapshot.docs[0];
             const recipient = { uid: recipientDoc.id, ...recipientDoc.data() };
 
+            // Generate one unique ID for the entire transaction
+            const mainTxId = db.collection('users').doc().id;
+
             await db.runTransaction(async (transaction) => {
                 const senderDocRef = usersRef.doc(currentUser.uid);
                 const recipientDocRef = usersRef.doc(recipient.uid);
@@ -1452,16 +1477,19 @@
                 transaction.update(senderDocRef, { balance: firebase.firestore.FieldValue.increment(-totalDeduction) });
                 transaction.update(recipientDocRef, { balance: firebase.firestore.FieldValue.increment(amount) });
             });
-
-            const txId = await addTransaction(currentUser.uid, 'debit', amount, `Sent to ${recipient.name}`, 'fa-paper-plane');
-            await addTransaction(recipient.uid, 'credit', amount, `Received from ${currentUser.name}`, 'fa-wallet');
-            await addTransaction(currentUser.uid, 'debit', fee, 'Send Money Fee', 'fa-file-invoice-dollar');
+            
+            // Use the SAME mainTxId for both sender and recipient transactions
+            await addTransaction(currentUser.uid, 'debit', amount, `Sent to ${recipient.name}`, 'fa-paper-plane', mainTxId);
+            await addTransaction(recipient.uid, 'credit', amount, `Received from ${currentUser.name}`, 'fa-wallet', mainTxId);
+            
+            // The fee transaction is related but separate, so we create a new linked ID for it.
+            await addTransaction(currentUser.uid, 'debit', fee, 'Send Money Fee', 'fa-file-invoice-dollar', `FEE_${mainTxId}`);
             
             showConfirmationPopup({
                 amount: amount,
                 fee: fee,
                 finalBalance: currentUser.balance,
-                txId: txId,
+                txId: mainTxId, // Show the main ID
                 idLabel: "WMT ID",
                 idValue: recipient.userId
             });
@@ -1492,7 +1520,7 @@
         } 
     }); 
     
-    // UPDATED: Money Out form with full functionality and confirmation popup
+    // ===[ CODE UPDATED ]===
     document.getElementById('money-out-form').addEventListener('submit', async (e) => { 
         e.preventDefault(); 
         const outBtn = document.getElementById('money-out-btn'); 
@@ -1533,6 +1561,9 @@
             const agentDoc = agentSnapshot.docs[0];
             const agent = { uid: agentDoc.id, ...agentDoc.data() };
 
+            // Generate one unique ID for the entire money-out operation
+            const mainTxId = db.collection('users').doc().id;
+
             await db.runTransaction(async (transaction) => {
                 const userDocRef = usersRef.doc(currentUser.uid);
                 const agentDocRef = usersRef.doc(agent.uid);
@@ -1541,15 +1572,19 @@
                 transaction.update(agentDocRef, { balance: firebase.firestore.FieldValue.increment(amount) });
             });
             
-            const txId = await addTransaction(currentUser.uid, 'debit', amount, `Money Out to Agent ${agent.name}`, 'fa-money-bill-wave');
-            await addTransaction(currentUser.uid, 'debit', fee, 'Money Out Fee', 'fa-file-invoice-dollar');
+            // Use the SAME mainTxId for both user and agent transactions
+            await addTransaction(currentUser.uid, 'debit', amount, `Money Out to Agent ${agent.name}`, 'fa-money-bill-wave', mainTxId);
+            await addTransaction(agent.uid, 'credit', amount, `Received from ${currentUser.name}`, 'fa-wallet', mainTxId);
+            
+            // Log the fee transaction with a related ID
+            await addTransaction(currentUser.uid, 'debit', fee, 'Money Out Fee', 'fa-file-invoice-dollar', `FEE_${mainTxId}`);
 
             showConfirmationPopup({
                 amount: amount,
                 fee: fee,
                 finalBalance: currentUser.balance,
-                txId: txId,
-                idLabel: "Agent ID", // Using AWMT as per user request
+                txId: mainTxId, // Show the main ID
+                idLabel: "Agent ID",
                 idValue: agent.userId
             });
 
@@ -1564,7 +1599,7 @@
         }
     });
     
-    // NEW: Payment form functionality
+    // ===[ CODE UPDATED ]===
     document.getElementById('payment-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const paymentBtn = document.getElementById('payment-btn');
@@ -1600,6 +1635,9 @@
             }
             const merchantDoc = merchantSnapshot.docs[0];
             const merchant = { uid: merchantDoc.id, ...merchantDoc.data() };
+            
+            // Generate one unique ID for the payment
+            const mainTxId = db.collection('users').doc().id;
 
             await db.runTransaction(async (transaction) => {
                 const userDocRef = usersRef.doc(currentUser.uid);
@@ -1609,14 +1647,15 @@
                 transaction.update(merchantDocRef, { balance: firebase.firestore.FieldValue.increment(amount) });
             });
 
-            const txId = await addTransaction(currentUser.uid, 'debit', amount, `Payment to ${merchant.name}`, 'fa-credit-card');
-            await addTransaction(merchant.uid, 'credit', amount, `Payment from ${currentUser.name}`, 'fa-credit-card');
+            // Use the SAME mainTxId for both user and merchant
+            await addTransaction(currentUser.uid, 'debit', amount, `Payment to ${merchant.name}`, 'fa-credit-card', mainTxId);
+            await addTransaction(merchant.uid, 'credit', amount, `Payment from ${currentUser.name}`, 'fa-credit-card', mainTxId);
             
             showConfirmationPopup({
                 amount: amount,
                 fee: fee,
                 finalBalance: currentUser.balance,
-                txId: txId,
+                txId: mainTxId, // Show the main ID
                 idLabel: "PWMT ID",
                 idValue: merchant.userId
             });
