@@ -408,11 +408,20 @@
         }
         .transaction-details h4 { font-size: 16px; margin-bottom: 5px; }
         .transaction-details p { font-size: 14px; color: var(--gray); }
+        
+        /* UPDATED: Fee info style is now separate */
+        .transaction-amount-wrapper {
+            text-align: right;
+        }
         .transaction-amount { font-weight: 600; }
         .credit { color: var(--secondary); }
         .debit { color: var(--danger); }
+        .fee-info {
+            font-size: 12px;
+            color: var(--danger);
+            margin-top: 4px;
+        }
         
-        /* New Styles for Transaction ID */
         .transaction-id-container {
             font-size: 12px;
             color: var(--gray);
@@ -464,6 +473,7 @@
             cursor: pointer;
         }
 
+        /* This message box is no longer used for transactions, but kept for KYC page */
         .message-box {
             border-radius: 8px;
             padding: 20px;
@@ -553,7 +563,7 @@
             border-radius: 8px;
         }
 
-        /* NEW: Confirmation Popup Styles */
+        /* Confirmation Popup Styles */
         .confirmation-details .info-row {
             display: flex;
             justify-content: space-between;
@@ -729,7 +739,6 @@
                         <div class="form-group"><label for="redeem-code">Redeem Code</label><input type="text" class="form-control" id="redeem-code" placeholder="Enter redeem code from admin"></div>
                         <div class="form-group"><label for="redeem-password">Code Password</label><input type="password" class="form-control" id="redeem-password" placeholder="Enter password for the code"></div>
                         <button class="btn" id="redeem-btn">Redeem Code</button>
-                        <div id="redeem-message" class="message-box"></div>
                     </div>
                 </div>
 
@@ -749,7 +758,6 @@
                             <div class="form-group" style="margin-top: 20px;"><label for="send-password">Your Password</label><input type="password" class="form-control" id="send-password" placeholder="Enter your password to confirm" required></div>
                             <button type="submit" class="btn" id="send-money-btn">Send Money</button>
                         </form>
-                        <div id="send-money-message" class="message-box"></div>
                     </div>
                 </div>
 
@@ -769,11 +777,9 @@
                             <div class="form-group" style="margin-top: 20px;"><label for="money-out-password">Your Password</label><input type="password" class="form-control" id="money-out-password" placeholder="Enter your password to confirm" required></div>
                             <button type="submit" class="btn" id="money-out-btn">Money Out</button>
                         </form>
-                         <div id="money-out-message" class="message-box"></div>
                     </div>
                 </div>
                 
-                <!-- NEW PAYMENT PAGE -->
                 <div class="page" id="payment-content">
                     <div class="form-page">
                         <h2>Payment</h2>
@@ -790,7 +796,6 @@
                             <div class="form-group" style="margin-top: 20px;"><label for="payment-password">Your Password</label><input type="password" class="form-control" id="payment-password" placeholder="Enter your password to confirm" required></div>
                             <button type="submit" class="btn" id="payment-btn">Make Payment</button>
                         </form>
-                         <div id="payment-message" class="message-box"></div>
                     </div>
                 </div>
 
@@ -817,8 +822,8 @@
         </div>
     </div>
 
-    <!-- UPDATED: Transaction Confirmation Modal -->
-    <div class="modal-overlay" id="confirmation-modal" style="display: none; align-items: center; justify-content: center;">
+    <!-- Transaction Confirmation Modal -->
+    <div class="modal-overlay" id="confirmation-modal">
         <div class="modal-content" style="max-width: 450px; text-align: left;">
             <div style="text-align: center; color: var(--secondary); margin-bottom: 20px;">
                 <i class="fas fa-check-circle" style="font-size: 60px;"></i>
@@ -847,7 +852,6 @@
                     <span>Date & Time:</span>
                     <strong id="confirm-datetime"></strong>
                 </div>
-                <!-- NEW DYNAMIC ID ROW -->
                 <div class="info-row" id="confirm-id-row" style="display: none;">
                     <span id="confirm-id-label"></span>
                     <strong id="confirm-id-value" class="mono-font"></strong>
@@ -862,6 +866,23 @@
             </div>
             <button class="btn" id="confirmation-close-btn" style="margin-top: 25px;">Done</button>
         </div>
+    </div>
+
+    <!-- Generic Alert Modal -->
+    <div class="modal-overlay" id="alert-modal">
+        <div class="modal-content" style="max-width: 400px; text-align: center;">
+            <h3 id="alert-modal-title" style="margin-bottom: 15px;"></h3>
+            <div id="alert-modal-icon" style="font-size: 50px; margin: 10px 0 20px;"></div>
+            <p id="alert-modal-message" style="font-size: 16px;"></p>
+            <button class="btn" id="alert-modal-close-btn" style="margin-top: 25px; width: 100px;">OK</button>
+        </div>
+    </div>
+
+    <!-- Maintenance Mode Overlay -->
+    <div id="maintenance-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.98); z-index: 9999; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px;">
+        <i class="fas fa-server" style="font-size: 60px; color: var(--primary); margin-bottom: 20px;"></i>
+        <h2 style="color: var(--dark); font-size: 28px;">Under Maintenance</h2>
+        <p style="color: var(--gray); font-size: 18px; margin-top: 10px; max-width: 500px;">Our services are temporarily unavailable as we're making things better. Please check back later.</p>
     </div>
 
 
@@ -885,7 +906,7 @@
 
     let currentUser = null; 
     let signupProfileUrl = 'https://res.cloudinary.com/dntvrm1wn/image/upload/v1625151899/avatar_ml_default.png'; 
-    let servicesAreEnabled = true; // Global variable for service status
+    let servicesAreEnabled = true;
     
     // Default fees, will be updated from Firestore
     let configFees = {
@@ -944,30 +965,28 @@
         });
     });
     
-    // MODIFIED: Service card click listener with service status check
     document.querySelectorAll('.service-card').forEach(card => {
         card.addEventListener('click', () => {
             if (!servicesAreEnabled) {
-                alert("All services are temporarily disabled by the admin. Please try again later.");
+                showCustomAlert('Maintenance', "All services are temporarily disabled by the admin. Please try again later.", 'error');
                 return;
             }
             if (currentUser && !currentUser.isKycVerified) {
-                alert("Please complete KYC verification to use any services.");
+                showCustomAlert('KYC Required', "Please complete KYC verification to use any services.", 'error');
                 navigateTo('kyc');
                 return;
             }
             const service = card.getAttribute('data-service');
-            // UPDATED pageMap to include payment
             const pageMap = { 
                 'add-money': 'add-money', 
                 'send-money': 'send-money', 
                 'money-out': 'money-out',
-                'payment': 'payment' // Added payment page
+                'payment': 'payment'
             };
             if (pageMap[service]) {
                 navigateTo(pageMap[service]);
             } else {
-                alert(`${service} feature is under development!`);
+                showCustomAlert('Info', `${service} feature is under development!`, 'info');
             }
         });
     });
@@ -1047,12 +1066,12 @@
                     userId: newUserId, name, email, dob, gender,
                     balance: 0.00, profileImg: signupProfileUrl, isKycVerified: false,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                }).then(() => alert("Signup successful!"))
-                  .catch((error) => alert("Error saving user data: " + error.message))
+                }).then(() => showCustomAlert("Success", "Signup successful!", "success"))
+                  .catch((error) => showCustomAlert("Error", "Error saving user data: " + error.message, "error"))
                   .finally(() => toggleButtonLoading(signupBtn, false));
             })
             .catch((error) => {
-                alert("Signup failed: " + error.message);
+                showCustomAlert("Signup Failed", error.message, "error");
                 toggleButtonLoading(signupBtn, false);
             });
     });
@@ -1064,7 +1083,7 @@
         const email = document.getElementById('login-email').value.toLowerCase();
         const password = document.getElementById('login-password').value;
         auth.signInWithEmailAndPassword(email, password)
-            .catch((error) => alert('Invalid email or password. Error: ' + error.message))
+            .catch((error) => showCustomAlert('Login Failed', 'Invalid email or password.', 'error'))
             .finally(() => toggleButtonLoading(loginBtn, false));
     });
     
@@ -1073,44 +1092,37 @@
         auth.signOut().then(closeSidebar);
     });
 
-    // --- Listen for Fee Configuration from Admin ---
-    function listenForFeeUpdates() {
+    function listenForSettings() {
         db.collection('settings').doc('fees').onSnapshot((doc) => {
             if (doc.exists) {
-                console.log("Fee configuration updated from Firestore.");
                 const feeData = doc.data();
-                configFees.sendMoneyFixedFee = feeData.sendMoneyFixedFee || 0.05;
-                configFees.moneyOutPercentageFee = feeData.moneyOutPercentageFee || 0.01;
-            } else {
-                console.log("No fee configuration found in Firestore, using default values.");
+                if (feeData.user) {
+                    configFees.sendMoneyFixedFee = feeData.user.sendMoneyFixedFee || 0.05;
+                    configFees.moneyOutPercentageFee = feeData.user.moneyOutPercentageFee || 0.01;
+                }
             }
-        }, (error) => {
-            console.error("Error fetching fee configuration:", error);
-        });
-    }
-    
-    // --- NEW: Listen for Service Status from Admin ---
-    function listenForServiceStatus() {
+        }, (error) => console.error("Error fetching fee config:", error));
+
         db.collection('settings').doc('status').onSnapshot((doc) => {
-            if (doc.exists && doc.data().servicesEnabled === false) {
+            const maintenanceOverlay = document.getElementById('maintenance-overlay');
+            if (doc.exists && doc.data().isMaintenanceModeEnabled === true) {
                 servicesAreEnabled = false;
-                console.log("Services are currently DISABLED by admin.");
+                maintenanceOverlay.style.display = 'flex';
             } else {
                 servicesAreEnabled = true;
-                console.log("Services are ENABLED.");
+                maintenanceOverlay.style.display = 'none';
             }
         }, (error) => {
             console.error("Error fetching service status:", error);
-            // In case of error, assume services are enabled to not block users unnecessarily
-            servicesAreEnabled = true;
+            servicesAreEnabled = true; // Default to enabled on error
+            document.getElementById('maintenance-overlay').style.display = 'none';
         });
     }
     
     function initializeAppUI() {
         if (!currentUser) return;
         showMainContainer('home-page');
-        listenForFeeUpdates();
-        listenForServiceStatus(); // Start listening for service status
+        listenForSettings(); // Start listening for settings
         const initialPage = window.location.hash ? window.location.hash.substring(1) : 'home';
         showPage(initialPage);
         history.replaceState({ page: initialPage }, '', `#${initialPage}`);
@@ -1120,8 +1132,6 @@
     function updateAllUI() {
         if (!currentUser) return;
         const formattedBalance = (currentUser.balance || 0).toFixed(2);
-        
-        // ===== জাভাস্ক্রিপ্ট থেকেও হোম পেজের ব্যালেন্স আপডেট করার লাইনটি সরিয়ে দেওয়া হয়েছে =====
         
         document.getElementById('wallet-balance').textContent = formattedBalance;
         document.getElementById('user-name').textContent = currentUser.name.split(' ')[0];
@@ -1167,10 +1177,7 @@
         }
     }
     
-    // ===[ CODE UPDATED ]===
-    // This function now accepts a 'providedTxId' to ensure a single, consistent transaction ID
-    // can be used across multiple user logs (e.g., sender and receiver) for the same event.
-    async function addTransaction(uid, type, amount, description, icon, providedTxId) {
+    async function addTransaction(uid, type, amount, description, icon, fee, providedTxId) {
         if (!uid) return null;
         const collectionRef = db.collection('users').doc(uid).collection('transactions');
         
@@ -1183,20 +1190,15 @@
             transactionId: providedTxId || null
         };
 
+        if (fee && fee > 0) {
+            transactionData.fee = fee;
+        }
+
         try {
-            let docRef;
-            if (providedTxId) {
-                // If an ID is provided, use it to set the document. This ensures the doc ID is the same as the transactionId.
-                docRef = collectionRef.doc(providedTxId);
-                transactionData.transactionId = providedTxId;
-                await docRef.set(transactionData);
-            } else {
-                // If no ID is provided (e.g., for redeem), auto-generate one with .add().
-                docRef = await collectionRef.add(transactionData);
-                // Then update the record to include its own ID for consistency.
-                await docRef.update({ transactionId: docRef.id });
-            }
-            return docRef.id; // Return the ID that was used or generated.
+            const docRef = providedTxId ? collectionRef.doc(providedTxId) : await collectionRef.add();
+            transactionData.transactionId = docRef.id;
+            await docRef.set(transactionData, { merge: true });
+            return docRef.id;
         } catch (error) {
             console.error("Error creating transaction:", error);
             return null;
@@ -1229,6 +1231,7 @@
         }, error => console.error("Error loading transactions: ", error)); 
     }
 
+    // ===[ UPDATED to display fee under amount ]===
     function createTransactionElement(tx, date) { 
         const li = document.createElement('li'); 
         li.className = 'transaction-item'; 
@@ -1236,6 +1239,8 @@
         const color = isCredit ? 'var(--secondary)' : 'var(--danger)'; 
         const sign = isCredit ? '+' : '-'; 
         const shortTxId = tx.transactionId.substring(0, 8) + '...';
+        const feeHTML = (tx.fee && tx.fee > 0) ? `<div class="fee-info">Fee: $${tx.fee.toFixed(2)}</div>` : '';
+        const totalAmount = isCredit ? tx.amount : tx.amount + (tx.fee || 0);
         
         li.innerHTML = `
             <div class="transaction-info">
@@ -1251,8 +1256,11 @@
                     </div>
                 </div>
             </div>
-            <div class="transaction-amount ${tx.type}">
-                ${sign}$${tx.amount.toFixed(2)}
+            <div class="transaction-amount-wrapper">
+                <div class="transaction-amount ${tx.type}">
+                    ${sign}$${totalAmount.toFixed(2)}
+                </div>
+                ${feeHTML}
             </div>`; 
         return li; 
     }
@@ -1269,7 +1277,7 @@
         const file = e.target.files[0]; 
         if(file) handleImageUpload(file, document.getElementById('settings-profile-preview'), async (url) => { 
             await db.collection('users').doc(currentUser.uid).update({ profileImg: url }); 
-            alert("Profile image updated successfully!"); 
+            showCustomAlert("Success", "Profile image updated successfully!", "success"); 
         }); 
     });
     
@@ -1291,7 +1299,7 @@
                 throw new Error('Image upload failed'); 
             } 
         } catch (error) { 
-            alert('Error uploading image. Please try again.'); 
+            showCustomAlert('Error', 'Error uploading image. Please try again.', 'error');
             previewElement.src = 'https://res.cloudinary.com/dntvrm1wn/image/upload/v1625151899/avatar_ml_default.png'; 
         } 
     }
@@ -1299,370 +1307,238 @@
     document.getElementById('kyc-submit-btn').addEventListener('click', async () => {
         const kycBtn = document.getElementById('kyc-submit-btn');
         const codeInput = document.getElementById('kyc-code').value.trim().toUpperCase();
-        const messageBox = document.getElementById('kyc-message');
-        if (!codeInput) { showMessage(messageBox, 'error', 'Please enter a verification code.'); return; }
+        if (!codeInput) { showMessage(document.getElementById('kyc-message'), 'error', 'Please enter a verification code.'); return; }
         toggleButtonLoading(kycBtn, true);
         try {
             const kycCodesRef = db.collection('kyc_codes');
             const querySnapshot = await kycCodesRef.where('code', '==', codeInput).limit(1).get();
-            if (querySnapshot.empty) {
-                throw new Error('Invalid KYC code. Please check the code and try again.');
-            }
+            if (querySnapshot.empty) throw new Error('Invalid KYC code. Please check the code and try again.');
+            
             const kycDoc = querySnapshot.docs[0];
-            const kycData = kycDoc.data();
-            if (kycData.isUsed) {
-                throw new Error('This KYC code has already been used.');
-            }
-            const userRef = db.collection('users').doc(currentUser.uid);
-            const kycDocRef = kycDoc.ref;
+            if (kycDoc.data().isUsed) throw new Error('This KYC code has already been used.');
+            
             await db.runTransaction(async (transaction) => {
-                transaction.update(userRef, { isKycVerified: true });
-                transaction.update(kycDocRef, { 
-                    isUsed: true, 
-                    usedBy: currentUser.uid,
-                    usedAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
+                transaction.update(db.collection('users').doc(currentUser.uid), { isKycVerified: true });
+                transaction.update(kycDoc.ref, { isUsed: true, usedBy: currentUser.uid, usedAt: firebase.firestore.FieldValue.serverTimestamp() });
             });
-            showMessage(messageBox, 'success', 'Congratulations! Your KYC verification is successful.');
+            showMessage(document.getElementById('kyc-message'), 'success', 'Congratulations! Your KYC verification is successful.');
         } catch (error) {
-            console.error("KYC Verification Error: ", error);
-            showMessage(messageBox, 'error', error.message || 'An error occurred during verification.');
+            showMessage(document.getElementById('kyc-message'), 'error', error.message || 'An error occurred during verification.');
         } finally {
             toggleButtonLoading(kycBtn, false);
         }
     });
 
-    // UPDATED: Redeem button to show confirmation popup
+    // ===[ UPDATED with popup alerts ]===
     document.getElementById('redeem-btn').addEventListener('click', async () => {
         const redeemBtn = document.getElementById('redeem-btn');
         const code = document.getElementById('redeem-code').value.trim().toUpperCase();
         const password = document.getElementById('redeem-password').value;
-        const messageBox = document.getElementById('redeem-message');
 
-        if (!code || !password) {
-            showMessage(messageBox, 'error', 'Please enter both code and password.');
-            return;
-        }
-
+        if (!code || !password) { showCustomAlert('Input Required', 'Please enter both redeem code and password.', 'error'); return; }
         toggleButtonLoading(redeemBtn, true);
 
         try {
-            const codesRef = db.collection('redeem_codes');
-            const querySnapshot = await codesRef.where('code', '==', code).limit(1).get();
-
-            if (querySnapshot.empty) {
-                throw new Error('Invalid code or password.');
-            }
-
+            const querySnapshot = await db.collection('redeem_codes').where('code', '==', code).limit(1).get();
+            if (querySnapshot.empty) throw new Error('Invalid code or password.');
+            
             const redeemDoc = querySnapshot.docs[0];
             const redeemData = redeemDoc.data();
 
-            if (redeemData.password !== password) {
-                throw new Error('Invalid code or password.');
-            }
-            if (redeemData.isUsed) {
-                throw new Error('This code has already been used.');
-            }
-            if (redeemData.expiryDate && redeemData.expiryDate.toDate() < new Date()) {
-                throw new Error('This code has expired.');
-            }
+            if (redeemData.password !== password) throw new Error('Invalid code or password.');
+            if (redeemData.isUsed) throw new Error('This code has already been used.');
+            if (redeemData.expiryDate && redeemData.expiryDate.toDate() < new Date()) throw new Error('This code has expired.');
 
-            const userRef = db.collection('users').doc(currentUser.uid);
-            const redeemCodeRef = redeemDoc.ref;
-            
             await db.runTransaction(async (transaction) => {
+                const userRef = db.collection('users').doc(currentUser.uid);
                 const userDoc = await transaction.get(userRef);
-                if (!userDoc.exists) throw new Error("User document does not exist!");
-                
                 const newBalance = (userDoc.data().balance || 0) + redeemData.amount;
                 transaction.update(userRef, { balance: newBalance });
-                transaction.update(redeemCodeRef, { 
-                    isUsed: true,
-                    usedBy: currentUser.uid,
-                    usedAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
+                transaction.update(redeemDoc.ref, { isUsed: true, usedBy: currentUser.uid, usedAt: firebase.firestore.FieldValue.serverTimestamp() });
             });
-            // The updated addTransaction function is called here without a provided ID, so it will generate one automatically.
-            const txId = await addTransaction(currentUser.uid, 'credit', redeemData.amount, `Redeemed Code`, 'fa-plus-circle');
-            
-            showConfirmationPopup({
-                amount: redeemData.amount,
-                fee: 0,
-                finalBalance: currentUser.balance,
-                txId: txId,
-                idLabel: "Redeem Code",
-                idValue: code
-            });
+
+            const txId = await addTransaction(currentUser.uid, 'credit', redeemData.amount, `Redeemed Code`, 'fa-plus-circle', 0);
+            showConfirmationPopup({ amount: redeemData.amount, fee: 0, finalBalance: currentUser.balance, txId: txId, idLabel: "Redeem Code", idValue: code });
             
             document.getElementById('redeem-code').value = '';
             document.getElementById('redeem-password').value = '';
 
         } catch (error) {
-            console.error("Redeem Error: ", error);
-            showMessage(messageBox, 'error', error.message);
+            showCustomAlert('Redeem Failed', error.message, 'error');
         } finally {
             toggleButtonLoading(redeemBtn, false);
         }
     });
     
-    const sendAmountInput = document.getElementById('send-amount'); 
-    const sendFeeDisplay = document.getElementById('send-fee-display'); 
-    
-    sendAmountInput.addEventListener('input', () => { 
-        const amount = parseFloat(sendAmountInput.value); 
+    document.getElementById('send-amount').addEventListener('input', () => { 
+        const amount = parseFloat(document.getElementById('send-amount').value); 
         const fee = configFees.sendMoneyFixedFee;
+        const feeDisplay = document.getElementById('send-fee-display');
         if (amount > 0) { 
-            sendFeeDisplay.textContent = `Fee: $${fee.toFixed(2)}. Total: $${(amount + fee).toFixed(2)}`; 
-            sendFeeDisplay.style.display = 'block'; 
+            feeDisplay.textContent = `Fee: $${fee.toFixed(2)}. Total: $${(amount + fee).toFixed(2)}`; 
+            feeDisplay.style.display = 'block'; 
         } else { 
-            sendFeeDisplay.style.display = 'none'; 
+            feeDisplay.style.display = 'none'; 
         } 
     });
     
-    // ===[ CODE UPDATED ]===
+    // ===[ UPDATED with WMT ID check and popup alerts ]===
     document.getElementById('send-money-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const sendBtn = document.getElementById('send-money-btn');
-        const recipientId = document.getElementById('recipient-id').value.trim();
-        const amount = parseFloat(sendAmountInput.value);
+        const recipientId = document.getElementById('recipient-id').value.trim().toUpperCase();
+        const amount = parseFloat(document.getElementById('send-amount').value);
         const password = document.getElementById('send-password').value;
-        const messageBox = document.getElementById('send-money-message');
         const fee = configFees.sendMoneyFixedFee;
 
-        if (!servicesAreEnabled) {
-            showMessage(messageBox, 'error', "Services are temporarily disabled by the admin.");
-            return;
-        }
-
-        if (!recipientId || !amount || !password) {
-             showMessage(messageBox, 'error', 'Please fill all fields.');
-             return;
-        }
-        if (amount < 0.01 || amount > 100) {
-            showMessage(messageBox, 'error', 'Amount must be between $0.01 and $100.');
-            return;
-        }
-
+        if (!recipientId || !amount || !password) { showCustomAlert('Input Required', 'Please fill all fields.', 'error'); return; }
+        if (amount < 0.01 || amount > 100) { showCustomAlert('Invalid Amount', 'Amount must be between $0.01 and $100.', 'error'); return; }
+        if (!recipientId.startsWith("WMT")) { showCustomAlert('Invalid Recipient', 'You can only send money to a WMT User ID. Agent (AWMT) and Merchant (PWMT) IDs are not allowed here.', 'error'); return; }
+        
         toggleButtonLoading(sendBtn, true);
 
         try {
-            const credential = firebase.auth.EmailAuthProvider.credential(currentUser.email, password);
-            await auth.currentUser.reauthenticateWithCredential(credential);
+            await auth.currentUser.reauthenticateWithCredential(firebase.auth.EmailAuthProvider.credential(currentUser.email, password));
 
             const totalDeduction = amount + fee;
-            if (recipientId === currentUser.userId) {
-                throw new Error("You cannot send money to yourself.");
-            }
-            if (totalDeduction > (currentUser.balance || 0)) {
-                throw new Error("Insufficient balance.");
-            }
-
-            const usersRef = db.collection('users');
-            const recipientQuery = usersRef.where('userId', '==', recipientId).limit(1);
-            const recipientSnapshot = await recipientQuery.get();
-
-            if (recipientSnapshot.empty) {
-                throw new Error("Recipient not found.");
-            }
+            if (recipientId === currentUser.userId) throw new Error("You cannot send money to yourself.");
+            if (totalDeduction > (currentUser.balance || 0)) throw new Error("Insufficient balance.");
+            
+            const recipientSnapshot = await db.collection('users').where('userId', '==', recipientId).limit(1).get();
+            if (recipientSnapshot.empty) throw new Error("Recipient not found.");
+            
             const recipientDoc = recipientSnapshot.docs[0];
             const recipient = { uid: recipientDoc.id, ...recipientDoc.data() };
-
-            // Generate one unique ID for the entire transaction
             const mainTxId = db.collection('users').doc().id;
 
             await db.runTransaction(async (transaction) => {
-                const senderDocRef = usersRef.doc(currentUser.uid);
-                const recipientDocRef = usersRef.doc(recipient.uid);
-                
-                transaction.update(senderDocRef, { balance: firebase.firestore.FieldValue.increment(-totalDeduction) });
-                transaction.update(recipientDocRef, { balance: firebase.firestore.FieldValue.increment(amount) });
+                transaction.update(db.collection('users').doc(currentUser.uid), { balance: firebase.firestore.FieldValue.increment(-totalDeduction) });
+                transaction.update(db.collection('users').doc(recipient.uid), { balance: firebase.firestore.FieldValue.increment(amount) });
             });
             
-            // Use the SAME mainTxId for both sender and recipient transactions
-            await addTransaction(currentUser.uid, 'debit', amount, `Sent to ${recipient.name}`, 'fa-paper-plane', mainTxId);
-            await addTransaction(recipient.uid, 'credit', amount, `Received from ${currentUser.name}`, 'fa-wallet', mainTxId);
+            await addTransaction(currentUser.uid, 'debit', amount, `Sent to ${recipient.name}`, 'fa-paper-plane', fee, mainTxId);
+            await addTransaction(recipient.uid, 'credit', amount, `Received from ${currentUser.name}`, 'fa-wallet', 0, mainTxId);
             
-            // The fee transaction is related but separate, so we create a new linked ID for it.
-            await addTransaction(currentUser.uid, 'debit', fee, 'Send Money Fee', 'fa-file-invoice-dollar', `FEE_${mainTxId}`);
-            
-            showConfirmationPopup({
-                amount: amount,
-                fee: fee,
-                finalBalance: currentUser.balance,
-                txId: mainTxId, // Show the main ID
-                idLabel: "WMT ID",
-                idValue: recipient.userId
-            });
+            showConfirmationPopup({ amount, fee, finalBalance: currentUser.balance, txId: mainTxId, idLabel: "WMT ID", idValue: recipient.userId });
             
             e.target.reset();
-            sendFeeDisplay.style.display = 'none';
+            document.getElementById('send-fee-display').style.display = 'none';
 
         } catch (error) {
-            showMessage(messageBox, 'error', `Transaction failed: ${error.message}`);
+             if (error.code === 'auth/wrong-password') {
+                showCustomAlert('Transaction Failed', 'The password you entered is incorrect.', 'error');
+            } else {
+                showCustomAlert('Transaction Failed', error.message, 'error');
+            }
         } finally {
             toggleButtonLoading(sendBtn, false);
             document.getElementById('send-password').value = '';
         }
     });
 
-    const moneyOutAmountInput = document.getElementById('money-out-amount'); 
-    const moneyOutFeeDisplay = document.getElementById('money-out-fee-display'); 
-    
-    moneyOutAmountInput.addEventListener('input', () => { 
-        const amount = parseFloat(moneyOutAmountInput.value); 
+    document.getElementById('money-out-amount').addEventListener('input', () => { 
+        const amount = parseFloat(document.getElementById('money-out-amount').value); 
         const feePercent = configFees.moneyOutPercentageFee;
+        const feeDisplay = document.getElementById('money-out-fee-display');
         if (amount > 0) { 
             const fee = amount * feePercent; 
-            moneyOutFeeDisplay.textContent = `Fee (${(feePercent * 100).toFixed(1)}%): $${fee.toFixed(2)}. Total: $${(amount + fee).toFixed(2)}`; 
-            moneyOutFeeDisplay.style.display = 'block'; 
+            feeDisplay.textContent = `Fee (${(feePercent * 100).toFixed(1)}%): $${fee.toFixed(2)}. Total: $${(amount + fee).toFixed(2)}`; 
+            feeDisplay.style.display = 'block'; 
         } else { 
-            moneyOutFeeDisplay.style.display = 'none'; 
+            feeDisplay.style.display = 'none'; 
         } 
     }); 
     
-    // ===[ CODE UPDATED ]===
+    // ===[ UPDATED with popup alerts ]===
     document.getElementById('money-out-form').addEventListener('submit', async (e) => { 
         e.preventDefault(); 
         const outBtn = document.getElementById('money-out-btn'); 
-        const agentId = document.getElementById('agent-id').value.trim(); 
-        const amount = parseFloat(moneyOutAmountInput.value); 
+        const agentId = document.getElementById('agent-id').value.trim().toUpperCase(); 
+        const amount = parseFloat(document.getElementById('money-out-amount').value); 
         const password = document.getElementById('money-out-password').value;
-        const messageBox = document.getElementById('money-out-message'); 
-        const feePercent = configFees.moneyOutPercentageFee;
-        const fee = amount * feePercent;
+        const fee = amount * configFees.moneyOutPercentageFee;
         const totalDeduction = amount + fee;
 
-        if (!agentId.startsWith("AWMT")) { 
-            showMessage(messageBox, 'error', 'Invalid Agent ID format. It must start with AWMT.'); 
-            return; 
-        } 
-        if (!amount || !password) {
-             showMessage(messageBox, 'error', 'Please fill all fields.');
-             return;
-        }
-
+        if (!agentId.startsWith("AWMT")) { showCustomAlert('Invalid Agent ID', 'Invalid Agent ID format. It must start with AWMT.', 'error'); return; } 
+        if (!amount || !password) { showCustomAlert('Input Required', 'Please fill all fields.', 'error'); return; }
         toggleButtonLoading(outBtn, true); 
         
         try {
-            const credential = firebase.auth.EmailAuthProvider.credential(currentUser.email, password);
-            await auth.currentUser.reauthenticateWithCredential(credential);
-            
-            if (totalDeduction > (currentUser.balance || 0)) {
-                throw new Error("Insufficient balance for money out and fees.");
-            }
+            await auth.currentUser.reauthenticateWithCredential(firebase.auth.EmailAuthProvider.credential(currentUser.email, password));
+            if (totalDeduction > (currentUser.balance || 0)) throw new Error("Insufficient balance for money out and fees.");
 
-            const usersRef = db.collection('users');
-            const agentQuery = usersRef.where('userId', '==', agentId).limit(1);
-            const agentSnapshot = await agentQuery.get();
+            const agentSnapshot = await db.collection('users').where('userId', '==', agentId).limit(1).get();
+            if (agentSnapshot.empty) throw new Error("Agent not found.");
 
-            if (agentSnapshot.empty) {
-                throw new Error("Agent not found.");
-            }
             const agentDoc = agentSnapshot.docs[0];
             const agent = { uid: agentDoc.id, ...agentDoc.data() };
-
-            // Generate one unique ID for the entire money-out operation
             const mainTxId = db.collection('users').doc().id;
 
             await db.runTransaction(async (transaction) => {
-                const userDocRef = usersRef.doc(currentUser.uid);
-                const agentDocRef = usersRef.doc(agent.uid);
-                
-                transaction.update(userDocRef, { balance: firebase.firestore.FieldValue.increment(-totalDeduction) });
-                transaction.update(agentDocRef, { balance: firebase.firestore.FieldValue.increment(amount) });
+                transaction.update(db.collection('users').doc(currentUser.uid), { balance: firebase.firestore.FieldValue.increment(-totalDeduction) });
+                transaction.update(db.collection('users').doc(agent.uid), { balance: firebase.firestore.FieldValue.increment(amount) });
             });
             
-            // Use the SAME mainTxId for both user and agent transactions
-            await addTransaction(currentUser.uid, 'debit', amount, `Money Out to Agent ${agent.name}`, 'fa-money-bill-wave', mainTxId);
-            await addTransaction(agent.uid, 'credit', amount, `Received from ${currentUser.name}`, 'fa-wallet', mainTxId);
-            
-            // Log the fee transaction with a related ID
-            await addTransaction(currentUser.uid, 'debit', fee, 'Money Out Fee', 'fa-file-invoice-dollar', `FEE_${mainTxId}`);
+            await addTransaction(currentUser.uid, 'debit', amount, `Money Out to Agent ${agent.name}`, 'fa-money-bill-wave', fee, mainTxId);
+            await addTransaction(agent.uid, 'credit', amount, `Received from ${currentUser.name}`, 'fa-wallet', 0, mainTxId);
 
-            showConfirmationPopup({
-                amount: amount,
-                fee: fee,
-                finalBalance: currentUser.balance,
-                txId: mainTxId, // Show the main ID
-                idLabel: "Agent ID",
-                idValue: agent.userId
-            });
+            showConfirmationPopup({ amount, fee, finalBalance: currentUser.balance, txId: mainTxId, idLabel: "Agent ID", idValue: agent.userId });
 
             e.target.reset();
-            moneyOutFeeDisplay.style.display = 'none';
+            document.getElementById('money-out-fee-display').style.display = 'none';
 
         } catch(error) {
-            showMessage(messageBox, 'error', `Money Out failed: ${error.message}`);
+             if (error.code === 'auth/wrong-password') {
+                showCustomAlert('Money Out Failed', 'The password you entered is incorrect.', 'error');
+            } else {
+                showCustomAlert('Money Out Failed', error.message, 'error');
+            }
         } finally {
             toggleButtonLoading(outBtn, false); 
             document.getElementById('money-out-password').value = '';
         }
     });
     
-    // ===[ CODE UPDATED ]===
+    // ===[ UPDATED with popup alerts ]===
     document.getElementById('payment-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const paymentBtn = document.getElementById('payment-btn');
-        const paymentId = document.getElementById('payment-id').value.trim();
+        const paymentId = document.getElementById('payment-id').value.trim().toUpperCase();
         const amount = parseFloat(document.getElementById('payment-amount').value);
         const password = document.getElementById('payment-password').value;
-        const messageBox = document.getElementById('payment-message');
-        const fee = 0; // No fee for payments
 
-        if (!paymentId.startsWith("PWMT")) { 
-            showMessage(messageBox, 'error', 'Invalid Merchant ID format. It must start with PWMT.'); 
-            return; 
-        }
-        if (!amount || !password) {
-             showMessage(messageBox, 'error', 'Please fill all fields.');
-             return;
-        }
+        if (!paymentId.startsWith("PWMT")) { showCustomAlert('Invalid Merchant ID', 'Invalid Merchant ID. Must start with PWMT.', 'error'); return; }
+        if (!amount || !password) { showCustomAlert('Input Required', 'Please fill all fields.', 'error'); return; }
         toggleButtonLoading(paymentBtn, true);
+
         try {
-            const credential = firebase.auth.EmailAuthProvider.credential(currentUser.email, password);
-            await auth.currentUser.reauthenticateWithCredential(credential);
+            await auth.currentUser.reauthenticateWithCredential(firebase.auth.EmailAuthProvider.credential(currentUser.email, password));
+            if (amount > (currentUser.balance || 0)) throw new Error("Insufficient balance.");
 
-            if (amount > (currentUser.balance || 0)) {
-                throw new Error("Insufficient balance.");
-            }
+            const merchantSnapshot = await db.collection('users').where('userId', '==', paymentId).limit(1).get();
+            if (merchantSnapshot.empty) throw new Error("Merchant not found.");
 
-            const usersRef = db.collection('users');
-            const merchantQuery = usersRef.where('userId', '==', paymentId).limit(1);
-            const merchantSnapshot = await merchantQuery.get();
-
-            if (merchantSnapshot.empty) {
-                throw new Error("Merchant not found.");
-            }
             const merchantDoc = merchantSnapshot.docs[0];
             const merchant = { uid: merchantDoc.id, ...merchantDoc.data() };
-            
-            // Generate one unique ID for the payment
             const mainTxId = db.collection('users').doc().id;
 
             await db.runTransaction(async (transaction) => {
-                const userDocRef = usersRef.doc(currentUser.uid);
-                const merchantDocRef = usersRef.doc(merchant.uid);
-                
-                transaction.update(userDocRef, { balance: firebase.firestore.FieldValue.increment(-amount) });
-                transaction.update(merchantDocRef, { balance: firebase.firestore.FieldValue.increment(amount) });
+                transaction.update(db.collection('users').doc(currentUser.uid), { balance: firebase.firestore.FieldValue.increment(-amount) });
+                transaction.update(db.collection('users').doc(merchant.uid), { balance: firebase.firestore.FieldValue.increment(amount) });
             });
 
-            // Use the SAME mainTxId for both user and merchant
-            await addTransaction(currentUser.uid, 'debit', amount, `Payment to ${merchant.name}`, 'fa-credit-card', mainTxId);
-            await addTransaction(merchant.uid, 'credit', amount, `Payment from ${currentUser.name}`, 'fa-credit-card', mainTxId);
+            await addTransaction(currentUser.uid, 'debit', amount, `Payment to ${merchant.name}`, 'fa-credit-card', 0, mainTxId);
+            await addTransaction(merchant.uid, 'credit', amount, `Payment from ${currentUser.name}`, 'fa-credit-card', 0, mainTxId);
             
-            showConfirmationPopup({
-                amount: amount,
-                fee: fee,
-                finalBalance: currentUser.balance,
-                txId: mainTxId, // Show the main ID
-                idLabel: "PWMT ID",
-                idValue: merchant.userId
-            });
-            
+            showConfirmationPopup({ amount, fee: 0, finalBalance: currentUser.balance, txId: mainTxId, idLabel: "PWMT ID", idValue: merchant.userId });
             e.target.reset();
+
         } catch (error) {
-            showMessage(messageBox, 'error', `Payment failed: ${error.message}`);
+            if (error.code === 'auth/wrong-password') {
+                 showCustomAlert('Payment Failed', 'The password you entered is incorrect.', 'error');
+            } else {
+                 showCustomAlert('Payment Failed', error.message, 'error');
+            }
         } finally {
             toggleButtonLoading(paymentBtn, false);
             document.getElementById('payment-password').value = '';
@@ -1675,61 +1551,57 @@
         if (newName && newDob) { 
             try { 
                 await db.collection('users').doc(currentUser.uid).update({ name: newName, dob: newDob }); 
-                alert('Settings saved!'); 
+                showCustomAlert('Success', 'Settings saved!', 'success');
                 navigateTo('profile'); 
             } catch (error) { 
-                alert('Error: ' + error.message); 
+                showCustomAlert('Error', 'Error: ' + error.message, 'error'); 
             } 
         } else { 
-            alert('Please fill all fields.'); 
+            showCustomAlert('Warning', 'Please fill all fields.', 'error');
         } 
     }); 
     
-    // Improved error handling for password change
     document.getElementById('change-password-btn').addEventListener('click', async () => { 
         const currentPass = document.getElementById('current-password').value; 
         const newPass = document.getElementById('new-password').value; 
         if(newPass.length < 6) { 
-            alert("New password must be at least 6 characters."); 
+            showCustomAlert("Invalid Password", "New password must be at least 6 characters.", "error"); 
             return; 
         } 
         try { 
             const credential = firebase.auth.EmailAuthProvider.credential(currentUser.email, currentPass); 
             await auth.currentUser.reauthenticateWithCredential(credential); 
             await auth.currentUser.updatePassword(newPass); 
-            alert("Password changed successfully!"); 
-            document.getElementById('current-password').value = ''; 
-            document.getElementById('new-password').value = ''; 
+            
+            showCustomAlert("Success", "Password changed successfully! You will be logged out now.", "success");
+            setTimeout(() => {
+                auth.signOut();
+            }, 3000);
+
         } catch (error) { 
             if (error.code === 'auth/wrong-password') {
-                alert("Failed: The current password you entered is incorrect.");
+                showCustomAlert("Incorrect Password", "The current password you entered is incorrect.", "error");
             } else {
-                alert("Failed: " + error.message); 
+                showCustomAlert("Error", "Failed: " + error.message, "error"); 
             }
-        } 
+        } finally {
+            document.getElementById('current-password').value = ''; 
+            document.getElementById('new-password').value = ''; 
+        }
     });
     
-    const qrModal = document.getElementById('qr-modal'); 
-    const showQrBtn = document.getElementById('show-qr-btn'); 
-    const closeQrBtn = document.getElementById('modal-close-btn'); 
-    
-    showQrBtn.addEventListener('click', () => { 
+    document.getElementById('show-qr-btn').addEventListener('click', () => { 
+        const qrModal = document.getElementById('qr-modal');
         generateQRCode(currentUser.userId); 
         document.getElementById('modal-user-id').textContent = currentUser.userId; 
         qrModal.style.display = 'flex'; 
     }); 
     
-    const closeModal = () => { 
-        qrModal.style.display = 'none'; 
-    }; 
-    
-    closeQrBtn.addEventListener('click', closeModal); 
-    qrModal.addEventListener('click', (e) => { 
-        if(e.target === qrModal) { 
-            closeModal(); 
-        } 
+    document.getElementById('modal-close-btn').addEventListener('click', () => {
+        document.getElementById('qr-modal').style.display = 'none';
     });
     
+    // This function is kept for the KYC page's specific message box
     function showMessage(element, type, text) { 
         element.className = `message-box ${type}`; 
         element.innerHTML = `<div class="message-icon ${type}"><i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-times-circle'}"></i></div><p>${text}</p>`; 
@@ -1738,29 +1610,12 @@
     }
     
     function copyToClipboard(text, entityName = 'Text') {
-        if (!navigator.clipboard) {
-            try {
-                const textArea = document.createElement("textarea");
-                textArea.value = text;
-                document.body.appendChild(textArea);
-                textArea.focus();
-                textArea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textArea);
-                alert(`${entityName} copied to clipboard!`);
-            } catch (err) {
-                alert('Failed to copy text.');
-            }
-            return;
-        }
         navigator.clipboard.writeText(text).then(() => {
-            alert(`${entityName} copied: ${text}`);
+            showCustomAlert('Copied!', `${entityName} copied to clipboard.`, 'success');
         }).catch(err => {
-            console.error('Failed to copy: ', err);
-            alert('Could not copy text.');
+            showCustomAlert('Error', 'Could not copy text.', 'error');
         });
     }
-
     
     function generateQRCode(text) { 
         const qrContainer = document.getElementById('modal-qrcode-container'); 
@@ -1771,23 +1626,19 @@
         qrContainer.innerHTML = qr.createImgTag(6, 10); 
     }
     
-    // QR Scanner Logic
     function startQrScanner(inputId) {
         activeQrInputId = inputId;
         document.getElementById('qr-scanner-modal').style.display = 'flex';
         html5QrCodeScanner = new Html5Qrcode("qr-reader");
         html5QrCodeScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, onScanSuccess)
         .catch(err => {
-            console.error("QR Scanner Error:", err);
-            alert("Could not start QR scanner. Please grant camera permission.");
+            showCustomAlert("Scanner Error", "Could not start QR scanner. Please grant camera permission.", "error");
             stopQrScanner();
         });
     }
 
     function onScanSuccess(decodedText, decodedResult) {
-        if (activeQrInputId) {
-            document.getElementById(activeQrInputId).value = decodedText;
-        }
+        if (activeQrInputId) document.getElementById(activeQrInputId).value = decodedText;
         stopQrScanner();
     }
 
@@ -1801,13 +1652,11 @@
     
     document.getElementById('scan-qr-send').addEventListener('click', () => startQrScanner('recipient-id'));
     document.getElementById('scan-qr-out').addEventListener('click', () => startQrScanner('agent-id'));
-    document.getElementById('scan-qr-payment').addEventListener('click', () => startQrScanner('payment-id')); // New QR scanner for payment
+    document.getElementById('scan-qr-payment').addEventListener('click', () => startQrScanner('payment-id'));
     document.getElementById('qr-scanner-close-btn').addEventListener('click', stopQrScanner);
 
-    // UPDATED: Function to show confirmation modal with dynamic ID field
-    const confirmationModal = document.getElementById('confirmation-modal');
-
     function showConfirmationPopup(details) {
+        const modal = document.getElementById('confirmation-modal');
         const amount = details.amount || 0;
         const fee = details.fee || 0;
         
@@ -1819,25 +1668,50 @@
         document.getElementById('confirm-tx-id').textContent = details.txId.substring(0, 10) + '...';
 
         const idRow = document.getElementById('confirm-id-row');
-        const idLabel = document.getElementById('confirm-id-label');
-        const idValue = document.getElementById('confirm-id-value');
-
         if (details.idLabel && details.idValue) {
-            idLabel.textContent = `${details.idLabel}:`;
-            idValue.textContent = details.idValue;
+            document.getElementById('confirm-id-label').textContent = `${details.idLabel}:`;
+            document.getElementById('confirm-id-value').textContent = details.idValue;
             idRow.style.display = 'flex';
         } else {
             idRow.style.display = 'none';
         }
 
-        const copyBtn = document.getElementById('confirm-copy-btn');
-        copyBtn.onclick = () => copyToClipboard(details.txId, 'Transaction ID');
-
-        confirmationModal.style.display = 'flex';
+        document.getElementById('confirm-copy-btn').onclick = () => copyToClipboard(details.txId, 'Transaction ID');
+        modal.style.display = 'flex';
     }
 
     document.getElementById('confirmation-close-btn').addEventListener('click', () => {
-        confirmationModal.style.display = 'none';
+        document.getElementById('confirmation-modal').style.display = 'none';
+    });
+
+    // --- Custom Alert Modal ---
+    const alertModal = document.getElementById('alert-modal');
+    const alertModalCloseBtn = document.getElementById('alert-modal-close-btn');
+
+    function showCustomAlert(title, message, type) {
+        const titleEl = document.getElementById('alert-modal-title');
+        const messageEl = document.getElementById('alert-modal-message');
+        const iconEl = document.getElementById('alert-modal-icon');
+
+        titleEl.textContent = title;
+        messageEl.textContent = message;
+
+        if (type === 'success') {
+            iconEl.innerHTML = '<i class="fas fa-check-circle"></i>';
+            iconEl.style.color = 'var(--secondary)';
+        } else if (type === 'error') {
+            iconEl.innerHTML = '<i class="fas fa-times-circle"></i>';
+            iconEl.style.color = 'var(--danger)';
+        } else { // info or other
+            iconEl.innerHTML = '<i class="fas fa-info-circle"></i>';
+            iconEl.style.color = 'var(--primary)';
+        }
+        
+        alertModal.style.display = 'flex';
+    }
+
+    alertModalCloseBtn.addEventListener('click', () => {
+        alertModal.style.display = 'none';
     });
     
     </script>
