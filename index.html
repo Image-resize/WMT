@@ -1357,8 +1357,12 @@
                 transaction.update(redeemDoc.ref, { isUsed: true, usedBy: currentUser.uid, usedAt: firebase.firestore.FieldValue.serverTimestamp() });
             });
 
-            const txId = await addTransaction(currentUser.uid, 'credit', redeemData.amount, `Redeemed Code`, 'fa-plus-circle', 0);
+            // === FIX STARTS HERE ===
+            // জেনারেট করা আইডি আগে থেকেই তৈরি করা হচ্ছে, যাতে কোনো ত্রুটি না হয়
+            const txId = db.collection('users').doc().id;
+            await addTransaction(currentUser.uid, 'credit', redeemData.amount, `Redeemed Code`, 'fa-plus-circle', 0, txId);
             showConfirmationPopup({ amount: redeemData.amount, fee: 0, finalBalance: currentUser.balance, txId: txId, idLabel: "Redeem Code", idValue: code });
+            // === FIX ENDS HERE ===
             
             document.getElementById('redeem-code').value = '';
             document.getElementById('redeem-password').value = '';
